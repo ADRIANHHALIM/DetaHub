@@ -72,7 +72,7 @@ Gunakan font dengan rasio keterbacaan teknis tinggi:
    - Temperature: `#F97316` (Warm Orange).
    - Humidity: `#06B6D4` (Cyan Water).
    - AQI: Garis bar diskret bertingkat (Step Chart) yang warnanya berubah sesuai level 1–5.
-
+ 
 ---
 
 ## 5. Layout & Component Geometry
