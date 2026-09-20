@@ -76,51 +76,52 @@ abstract final class AppColors {
   // Base Theme Colors — Light Mode (Default) — Style.md 2.1
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Page background: Clean Off-White (#F8F9FA).
-  static const Color background = Color(0xFFF8F9FA);
+  /// The calm, slightly cool canvas that gives surfaces room to breathe.
+  static const Color background = Color(0xFFF6F8F7);
 
   /// Card / widget surface: Pure White (#FFFFFF).
   static const Color surface = Color(0xFFFFFFFF);
 
   /// Surface variant / chip / track bar: Cool Light Grey (#EFF1F4).
-  static const Color surfaceVariant = Color(0xFFEFF1F4);
+  static const Color surfaceVariant = Color(0xFFE9EFEC);
 
   /// Primary 1px border color: Crisp Divider (#D0D7DE).
-  static const Color border = Color(0xFFD0D7DE);
+  static const Color border = Color(0xFFDCE5E0);
 
   /// Subtle divider / secondary border.
-  static const Color borderSubtle = Color(0xFFE7ECF0);
+  static const Color borderSubtle = Color(0xFFEAF0ED);
 
   /// Primary body & title text: Deep Slate (#0D1117).
-  static const Color textPrimary = Color(0xFF0D1117);
+  static const Color textPrimary = Color(0xFF17211F);
 
   /// Secondary text, units, descriptions: Neutral Grey (#57606A).
-  static const Color textSecondary = Color(0xFF57606A);
+  static const Color textSecondary = Color(0xFF65736E);
 
   /// Muted / caption text.
-  static const Color textMuted = Color(0xFF8C959F);
+  static const Color textMuted = Color(0xFF98A39F);
 
-  /// Accent / primary actions: Pure Industrial (#111827).
-  static const Color accent = Color(0xFF111827);
+  /// DetaHub green — reserved for intentional actions and live states.
+  static const Color accent = Color(0xFF137A62);
+  static const Color accentSoft = Color(0xFFE0F1EB);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Base Theme Colors — Dark Mode (LAT Web Native) — Style.md 2.1
   // ─────────────────────────────────────────────────────────────────────────
 
   /// OLED Dark page background: OLED Obsidian (#0B0C0E).
-  static const Color backgroundDark = Color(0xFF0B0C0E);
+  static const Color backgroundDark = Color(0xFF080C0B);
 
   /// Dark surface container / cards: Charcoal Tint (#14171A).
-  static const Color surfaceDark = Color(0xFF14171A);
+  static const Color surfaceDark = Color(0xFF111816);
 
   /// Dark surface variant / chips: Muted Steel (#1F2428).
-  static const Color surfaceVariantDark = Color(0xFF1F2428);
+  static const Color surfaceVariantDark = Color(0xFF1B2723);
 
   /// Dark mode 1px border: Low-contrast Dark (#2A3138).
-  static const Color borderDark = Color(0xFF2A3138);
+  static const Color borderDark = Color(0xFF28342F);
 
   /// Dark mode subtle border.
-  static const Color borderSubtleDark = Color(0xFF1F2428);
+  static const Color borderSubtleDark = Color(0xFF1A2521);
 
   /// Dark mode primary text: Crisp Chalk (#EDEDED).
   static const Color textPrimaryDark = Color(0xFFEDEDED);
@@ -132,7 +133,8 @@ abstract final class AppColors {
   static const Color textMutedDark = Color(0xFF6E7681);
 
   /// Dark mode accent / buttons: Stark Minimalist (#FFFFFF).
-  static const Color accentDark = Color(0xFFFFFFFF);
+  static const Color accentDark = Color(0xFF57D4AF);
+  static const Color accentSoftDark = Color(0xFF163A30);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Chart Color Mapping (Style.md 4.5)
@@ -150,4 +152,3 @@ abstract final class AppColors {
   /// Humidity: Cyan Water (#06B6D4).
   static const Color metricHumidity = Color(0xFF06B6D4);
 }
-

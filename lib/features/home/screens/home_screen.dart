@@ -1,462 +1,434 @@
-// lib/features/home/screens/home_screen.dart
-//
-// "Your devices" Home Dashboard (GitHub Issue #2).
-// Centered around the user mental model:
-// "I have a device, where is it located, and what is its data?"
-// Neutral by default; color communicates status only.
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/database/daos/sector_dao.dart';
+import '../../../core/database/app_database.dart' show Sector;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/aqi_badge.dart';
+import '../../../core/widgets/detahub_brand.dart';
+import '../../../core/widgets/detahub_button.dart';
+import '../../../core/widgets/detahub_section_header.dart';
 import '../../sector/providers/sector_providers.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
-
   @override
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int? _selectedLocationId; // null = All Locations
-
+  int? _selectedLocation;
   @override
   Widget build(BuildContext context) {
-    final devicesWithLocAsync = ref.watch(watchAllDevicesWithLocationProvider);
-    final sectorsAsync = ref.watch(watchAllSectorsProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final borderColor = isDark ? AppColors.borderDark : AppColors.border;
-    final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-    final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
-
+    final devices = ref.watch(watchAllDevicesWithLocationProvider);
+    final locations = ref.watch(watchAllSectorsProvider);
+    final secondary = Theme.of(context).brightness == Brightness.dark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondary;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('DetaHub'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, size: 22),
-            tooltip: 'Add Device',
-            onPressed: () => context.push('/add-device'),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: SafeArea(
-        bottom: false,
-        child: devicesWithLocAsync.when(
-          loading: () => const Center(
-            child: SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 1.5),
-            ),
-          ),
-          error: (err, _) => Center(child: Text('Error loading devices: $err')),
-          data: (allDevices) {
-            // Filter devices by location if selected
-            final filteredDevices = _selectedLocationId == null
-                ? allDevices
-                : allDevices.where((d) => d.sectorId == _selectedLocationId).toList();
-
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-              children: [
-                // Header: "Your devices" (Issue #2)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Your devices',
-                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.3,
-                              ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Monitor your DetaLab devices',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: textSecondary,
-                              ),
-                        ),
+        body: SafeArea(
+            bottom: false,
+            child: devices.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, _) => Center(
+                  child: Text('We couldn’t load your devices.\n$error',
+                      textAlign: TextAlign.center)),
+              data: (all) {
+                final filtered = _selectedLocation == null
+                    ? all
+                    : all
+                        .where((it) => it.sectorId == _selectedLocation)
+                        .toList();
+                final locationList = locations.valueOrNull ?? const <Sector>[];
+                return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 116),
+                    children: [
+                      DetaHubHeader(
+                          action: DetaHubIconButton(
+                              icon: Icons.add,
+                              tooltip: 'Add device',
+                              onPressed: () => context.push('/add-device'))),
+                      const SizedBox(height: 28),
+                      Text('Good evening,',
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(color: secondary)),
+                      const SizedBox(height: 2),
+                      Text('Adrian',
+                          style: Theme.of(context).textTheme.displayMedium),
+                      const SizedBox(height: 8),
+                      Text("Here’s your connected devices",
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.copyWith(color: secondary)),
+                      const SizedBox(height: 20),
+                      DetaHubButton(
+                          label: 'Add device',
+                          icon: Icons.add,
+                          onPressed: () => context.push('/add-device')),
+                      const SizedBox(height: 32),
+                      if (locationList.length > 1) ...[
+                        _LocationFilters(
+                            locations: locationList,
+                            selected: _selectedLocation,
+                            onSelect: (id) =>
+                                setState(() => _selectedLocation = id)),
+                        const SizedBox(height: 26)
                       ],
-                    ),
-                    ElevatedButton.icon(
-                      onPressed: () => context.push('/add-device'),
-                      icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Add device'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-
-                // Location Filter Chips
-                sectorsAsync.when(
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                  data: (sectors) {
-                    if (sectors.isEmpty) return const SizedBox.shrink();
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _filterChip(
-                              label: 'All Locations',
-                              isSelected: _selectedLocationId == null,
-                              onTap: () => setState(() => _selectedLocationId = null),
-                              isDark: isDark,
-                            ),
-                            const SizedBox(width: 8),
-                            ...sectors.map((sector) {
-                              return Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: _filterChip(
-                                  label: sector.name,
-                                  isSelected: _selectedLocationId == sector.id,
-                                  onTap: () => setState(() => _selectedLocationId = sector.id),
-                                  isDark: isDark,
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-
-                // Device Cards List
-                if (filteredDevices.isEmpty)
-                  _buildFriendlyEmptyState(context, isDark, allDevices.isEmpty)
-                else
-                  ...filteredDevices.map(
-                    (item) => _buildDeviceCard(context, item, isDark, surfaceColor, borderColor, textSecondary, textMuted),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
+                      DetaHubSectionHeader(
+                          title: 'Connected devices',
+                          trailing:
+                              '${filtered.length} device${filtered.length == 1 ? '' : 's'}'),
+                      const SizedBox(height: 14),
+                      if (filtered.isEmpty)
+                        _EmptyDevices(hasDevices: all.isNotEmpty)
+                      else
+                        ...filtered.map((item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: _DeviceCard(item: item))),
+                      if (all.isNotEmpty &&
+                          _selectedLocation == null &&
+                          locationList.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _LocationSummary(locations: locationList)
+                      ],
+                    ]);
+              },
+            )));
   }
+}
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Location Filter Chip
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _filterChip({
-    required String label,
-    required bool isSelected,
-    required VoidCallback onTap,
-    required bool isDark,
-  }) {
-    final borderColor = isDark ? AppColors.borderDark : AppColors.border;
-    final activeBg = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
-    final activeColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
-    final inactiveColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(kRadiusChip),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? activeBg : Colors.transparent,
-          borderRadius: BorderRadius.circular(kRadiusChip),
-          border: Border.all(
-            color: isSelected ? activeColor : borderColor,
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? activeColor : inactiveColor,
-              ),
-        ),
-      ),
-    );
+class _LocationFilters extends StatelessWidget {
+  final List<Sector> locations;
+  final int? selected;
+  final ValueChanged<int?> onSelect;
+  const _LocationFilters(
+      {required this.locations,
+      required this.selected,
+      required this.onSelect});
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        _filter(
+            context, 'All locations', selected == null, () => onSelect(null)),
+        ...locations.map((l) => Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: _filter(
+                context, l.name, selected == l.id, () => onSelect(l.id))))
+      ]));
+  Widget _filter(
+      BuildContext context, String label, bool active, VoidCallback tap) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Material(
+        color: active
+            ? (dark ? AppColors.accentSoftDark : AppColors.accentSoft)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+            onTap: tap,
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+                decoration: BoxDecoration(
+                    border: Border.all(
+                        color: active
+                            ? (dark ? AppColors.accentDark : AppColors.accent)
+                            : (dark ? AppColors.borderDark : AppColors.border)),
+                    borderRadius: BorderRadius.circular(14)),
+                child: Text(label,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight:
+                            active ? FontWeight.w700 : FontWeight.w500)))));
   }
+}
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Device Card (Directly following Issue #2 mockup)
-  // ┌─────────────────────────────────────┐
-  // │ Lightweight Air Tester              │
-  // │ Lab IoT · Universitas Trisakti      │
-  // │                                     │
-  // │ Air quality                         │
-  // │ 42 (or Good)                        │
-  // │                                     │
-  // │ Temperature       Humidity          │
-  // │ 27.4 °C           61 %              │
-  // │                                     │
-  // │ ● Connected                         │
-  // │ Updated 12 sec ago                  │
-  // └─────────────────────────────────────┘
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildDeviceCard(
-    BuildContext context,
-    DeviceWithLocation item,
-    bool isDark,
-    Color surfaceColor,
-    Color borderColor,
-    Color textSecondary,
-    Color textMuted,
-  ) {
+class _DeviceCard extends StatelessWidget {
+  final DeviceWithLocation item;
+  const _DeviceCard({required this.item});
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final secondary =
+        dark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final muted = dark ? AppColors.textMutedDark : AppColors.textMuted;
     final device = item.device;
-    const aqi = 1; // Default/latest AQI
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: surfaceColor,
+    return Material(
+        color: dark ? AppColors.surfaceDark : AppColors.surface,
         borderRadius: BorderRadius.circular(kRadiusCard),
-        border: Border.all(color: borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: InkWell(
-        onTap: () => context.push('/devices/${device.id}'),
-        borderRadius: BorderRadius.circular(kRadiusCard),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: Device Name & Subtitle (Area · Location)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          device.name,
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          '${item.areaName} · ${item.locationName}',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: textSecondary,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Air Quality Reading
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Column(
+        child: InkWell(
+            onTap: () => context.push('/devices/${device.id}'),
+            borderRadius: BorderRadius.circular(kRadiusCard),
+            child: Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                    border: Border.all(
+                        color: dark
+                            ? AppColors.borderDark
+                            : AppColors.borderSubtle),
+                    borderRadius: BorderRadius.circular(kRadiusCard),
+                    boxShadow: [
+                      BoxShadow(
+                          color:
+                              Colors.black.withValues(alpha: dark ? .12 : .025),
+                          blurRadius: 18,
+                          offset: const Offset(0, 7))
+                    ]),
+                child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Air quality',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: textSecondary,
-                            ),
-                      ),
-                      const SizedBox(height: 2),
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            '42',
-                            style: AppTheme.monoStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: -1,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'AQI',
-                            style: AppTheme.monoStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const AqiBadge(aqi: aqi),
-                ],
-              ),
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _ProductPlaceholder(),
+                            const SizedBox(width: 13),
+                            Expanded(
+                                child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                  Text(device.id.toUpperCase(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTheme.monoStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                          color: muted,
+                                          letterSpacing: .2)),
+                                  const SizedBox(height: 3),
+                                  Text(device.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge),
+                                  const SizedBox(height: 3),
+                                  Text('Lightweight Air Tester',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: secondary)),
+                                  const SizedBox(height: 7),
+                                  Text(
+                                      '${item.locationName} · ${item.areaName}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(color: secondary))
+                                ])),
+                            const SizedBox(width: 8),
+                            const _Status()
+                          ]),
+                      const SizedBox(height: 20),
+                      const Row(children: [
+                        _Metric(label: 'AQI', value: '42', note: 'Good'),
+                        _Metric(label: 'Temperature', value: '27.4 °C'),
+                        _Metric(label: 'Humidity', value: '61 %')
+                      ]),
+                      const SizedBox(height: 17),
+                      CustomPaint(
+                          size: const Size(double.infinity, 24),
+                          painter: _SparklinePainter(
+                              dark ? AppColors.accentDark : AppColors.accent)),
+                      const SizedBox(height: 8),
+                      Row(children: [
+                        const _Status(compact: false),
+                        const Spacer(),
+                        Text('Updated just now',
+                            style:
+                                AppTheme.monoStyle(fontSize: 10, color: muted))
+                      ]),
+                    ]))));
+  }
+}
 
-              const SizedBox(height: 16),
-              Divider(height: 1, color: borderColor),
-              const SizedBox(height: 14),
+class _ProductPlaceholder extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+        width: 54,
+        height: 54,
+        decoration: BoxDecoration(
+            color:
+                dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant,
+            borderRadius: BorderRadius.circular(17)),
+        child: CustomPaint(
+            painter: _DevicePainter(
+                dark ? AppColors.textPrimaryDark : AppColors.textPrimary)));
+  }
+}
 
-              // Secondary Metrics: Temperature & Humidity (Neutral by default)
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Temperature',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: textSecondary,
-                              ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '27.4 °C',
-                          style: AppTheme.monoStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Humidity',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: textSecondary,
-                              ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          '61 %',
-                          style: AppTheme.monoStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-              Divider(height: 1, color: borderColor),
-              const SizedBox(height: 12),
-
-              // Footer: Connection status & Last updated timestamp
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: const BoxDecoration(
-                          color: AppColors.aqiGood,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Connected',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppColors.aqiGood,
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                    ],
-                  ),
-                  Text(
-                    'Updated recently',
-                    style: AppTheme.monoStyle(
-                      fontSize: 11,
-                      color: textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+class _DevicePainter extends CustomPainter {
+  final Color c;
+  _DevicePainter(this.c);
+  @override
+  void paint(Canvas canvas, Size s) {
+    final p = Paint()
+      ..color = c
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawRRect(
+        RRect.fromRectAndRadius(
+            Rect.fromLTWH(
+                s.width * .29, s.height * .2, s.width * .42, s.height * .6),
+            const Radius.circular(7)),
+        p);
+    canvas.drawCircle(Offset(s.width * .5, s.height * .38), 3, p);
+    canvas.drawLine(Offset(s.width * .39, s.height * .58),
+        Offset(s.width * .61, s.height * .58), p);
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Friendly Empty State
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildFriendlyEmptyState(BuildContext context, bool isDark, bool noDevicesAtAll) {
-    final borderColor = isDark ? AppColors.borderDark : AppColors.border;
-    final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-    final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
+  @override
+  bool shouldRepaint(_DevicePainter o) => o.c != c;
+}
 
+class _Status extends StatelessWidget {
+  final bool compact;
+  const _Status({this.compact = true});
+  @override
+  Widget build(BuildContext c) =>
+      Row(mainAxisSize: MainAxisSize.min, children: [
+        Container(
+            width: 7,
+            height: 7,
+            decoration: const BoxDecoration(
+                color: AppColors.aqiGood, shape: BoxShape.circle)),
+        if (!compact) ...[
+          const SizedBox(width: 6),
+          Text('Connected',
+              style: Theme.of(c).textTheme.labelMedium?.copyWith(
+                  color: AppColors.aqiGood, fontWeight: FontWeight.w700))
+        ]
+      ]);
+}
+
+class _Metric extends StatelessWidget {
+  final String label, value;
+  final String? note;
+  const _Metric({required this.label, required this.value, this.note});
+  @override
+  Widget build(BuildContext c) {
+    final secondary = Theme.of(c).brightness == Brightness.dark
+        ? AppColors.textSecondaryDark
+        : AppColors.textSecondary;
+    return Expanded(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label,
+          style: Theme.of(c).textTheme.labelSmall?.copyWith(color: secondary)),
+      const SizedBox(height: 3),
+      Text(value,
+          style: AppTheme.monoStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+      if (note != null)
+        Text(note!,
+            style: Theme.of(c).textTheme.labelSmall?.copyWith(
+                color: AppColors.aqiGood, fontWeight: FontWeight.w700))
+    ]));
+  }
+}
+
+class _SparklinePainter extends CustomPainter {
+  final Color c;
+  _SparklinePainter(this.c);
+  @override
+  void paint(Canvas canvas, Size s) {
+    final p = Paint()
+      ..color = c.withValues(alpha: .68)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4
+      ..strokeCap = StrokeCap.round;
+    final path = Path()
+      ..moveTo(0, s.height * .72)
+      ..cubicTo(s.width * .15, s.height * .55, s.width * .2, s.height * .83,
+          s.width * .34, s.height * .54)
+      ..cubicTo(s.width * .5, s.height * .15, s.width * .61, s.height * .63,
+          s.width * .77, s.height * .38)
+      ..cubicTo(s.width * .88, s.height * .2, s.width * .92, s.height * .46,
+          s.width, s.height * .23);
+    canvas.drawPath(path, p);
+  }
+
+  @override
+  bool shouldRepaint(_SparklinePainter o) => o.c != c;
+}
+
+class _EmptyDevices extends StatelessWidget {
+  final bool hasDevices;
+  const _EmptyDevices({required this.hasDevices});
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final secondary =
+        dark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(kRadiusCard),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: Column(
-        children: [
-          Icon(Icons.air_outlined, size: 48, color: textMuted),
+        padding: const EdgeInsets.all(28),
+        decoration: BoxDecoration(
+            color: dark ? AppColors.surfaceDark : AppColors.surface,
+            borderRadius: BorderRadius.circular(kRadiusCard)),
+        child: Column(children: [
+          _ProductPlaceholder(),
           const SizedBox(height: 16),
           Text(
-            noDevicesAtAll ? 'No devices connected yet' : 'No devices in this location',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-          ),
+              hasDevices
+                  ? 'No devices here yet'
+                  : 'Your first device is waiting',
+              style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
-            noDevicesAtAll
-                ? 'Connect your Lightweight Air Tester to start monitoring air quality, temperature, and humidity locally.'
-                : 'Select another location or tap below to add a device here.',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: textSecondary,
-                  height: 1.4,
-                ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => context.push('/add-device'),
-            icon: const Icon(Icons.add, size: 18),
-            label: const Text('Add device'),
-          ),
-        ],
-      ),
-    );
+              hasDevices
+                  ? 'Choose another location or add a device to this one.'
+                  : 'Bring your environment into view in a few simple steps.',
+              textAlign: TextAlign.center,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: secondary)),
+          const SizedBox(height: 18),
+          DetaHubButton(
+              label: 'Add device',
+              icon: Icons.add,
+              onPressed: () => context.push('/add-device'))
+        ]));
   }
+}
+
+class _LocationSummary extends StatelessWidget {
+  final List<Sector> locations;
+  const _LocationSummary({required this.locations});
+  @override
+  Widget build(BuildContext context) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const SizedBox(height: 16),
+        const DetaHubSectionHeader(title: 'Your locations'),
+        const SizedBox(height: 12),
+        ...locations.map((location) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? AppColors.surfaceDark
+                      : AppColors.surface,
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    onTap: () => context.go('/locations'),
+                    borderRadius: BorderRadius.circular(18),
+                    child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(children: [
+                          const Icon(Icons.location_on_outlined, size: 19),
+                          const SizedBox(width: 12),
+                          Expanded(
+                              child: Text(location.name,
+                                  style:
+                                      Theme.of(context).textTheme.titleMedium)),
+                          const Icon(Icons.chevron_right, size: 18),
+                        ])),
+                  )),
+            )),
+      ]);
 }

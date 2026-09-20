@@ -20,6 +20,8 @@ import '../../../core/network/network_error.dart';
 import '../../../core/network/providers/network_providers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/detahub_brand.dart';
+import '../../../core/widgets/detahub_button.dart';
 import '../../sector/providers/sector_providers.dart';
 import 'device_form_screen.dart'; // for ResultX extension
 
@@ -43,12 +45,14 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
   // Connection
   final _addressController = TextEditingController(text: '192.168.1.50');
   bool _searching = false;
+  bool _showManualAddress = false;
   String? _connectError;
   DeviceManifest? _discoveredManifest;
   String _finalUrl = '';
 
   // Placement
-  final _deviceNameController = TextEditingController(text: 'Lightweight Air Tester');
+  final _deviceNameController =
+      TextEditingController(text: 'Lightweight Air Tester');
   int? _selectedSectorId;
   int? _selectedSubSectorId;
   bool _saving = false;
@@ -169,24 +173,49 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Add Device'),
-        leading: IconButton(
-          icon: const Icon(Icons.close, size: 20),
-          onPressed: () => context.pop(),
-        ),
-      ),
       body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          child: switch (_step) {
-            WizardStep.selectProduct => _buildStepSelectProduct(),
-            WizardStep.connect => _buildStepConnect(),
-            WizardStep.found => _buildStepFound(),
-            WizardStep.placement => _buildStepPlacement(),
-            WizardStep.completed => _buildStepCompleted(),
-          },
-        ),
+        child: Column(children: [
+          Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 20, 0),
+              child: Row(children: [
+                DetaHubIconButton(
+                    icon: Icons.close,
+                    tooltip: 'Close',
+                    onPressed: () => context.pop()),
+                const SizedBox(width: 10),
+                Expanded(
+                    child: Text('Add a device',
+                        style: Theme.of(context).textTheme.titleLarge)),
+                Text('${_step.index + 1} of 5',
+                    style: Theme.of(context).textTheme.labelMedium),
+              ])),
+          Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
+              child: LinearProgressIndicator(
+                  value: (_step.index + 1) / 5,
+                  minHeight: 3,
+                  borderRadius: BorderRadius.circular(2))),
+          Expanded(
+              child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                    position: Tween<Offset>(
+                            begin: const Offset(.04, 0), end: Offset.zero)
+                        .animate(CurvedAnimation(
+                            parent: animation,
+                            curve: const Cubic(.2, .75, .25, 1))),
+                    child: child)),
+            child: switch (_step) {
+              WizardStep.selectProduct => _buildStepSelectProduct(),
+              WizardStep.connect => _buildStepConnect(),
+              WizardStep.found => _buildStepFound(),
+              WizardStep.placement => _buildStepPlacement(),
+              WizardStep.completed => _buildStepCompleted(),
+            },
+          )),
+        ]),
       ),
     );
   }
@@ -198,8 +227,10 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
     final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final surfaceVariant = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final surfaceVariant =
+        isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
+    final textSecondary =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -210,8 +241,11 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Select your DetaLab physical hardware product.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textSecondary),
+          'Choose the DetaLab device you’d like to bring into DetaHub.',
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: textSecondary),
         ),
         const SizedBox(height: 24),
 
@@ -242,7 +276,7 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
                     borderRadius: BorderRadius.circular(kRadiusChip),
                     border: Border.all(color: borderColor, width: 1),
                   ),
-                  child: const Icon(Icons.air, size: 24, color: AppColors.textPrimary),
+                  child: const Icon(Icons.air, size: 24),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -251,9 +285,10 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
                     children: [
                       Text(
                         'Lightweight Air Tester',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
                       ),
                       const SizedBox(height: 4),
                       Text(
@@ -267,7 +302,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
+                const Icon(Icons.chevron_right,
+                    size: 20, color: AppColors.textSecondary),
               ],
             ),
           ),
@@ -283,7 +319,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
     final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final textSecondary =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -295,11 +332,14 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
         const SizedBox(height: 6),
         Text(
           'Make sure your $_productName is powered on and connected to your local Wi-Fi.',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textSecondary),
+          style: Theme.of(context)
+              .textTheme
+              .bodyMedium
+              ?.copyWith(color: textSecondary),
         ),
         const SizedBox(height: 24),
 
-        // Option 1: Find Nearby Devices (Subnet Scan Probe)
+        // Discovery is the prominent path; no technical address is shown first.
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -318,76 +358,83 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Scan your local network to discover connected DetaLab devices automatically.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textSecondary),
+                'We’ll look for DetaLab devices on the same Wi-Fi network.',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: textSecondary),
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
+              DetaHubButton(
+                  label: _searching
+                      ? 'Looking for devices…'
+                      : 'Find nearby devices',
+                  icon: Icons.radar_outlined,
+                  expand: true,
                   onPressed: _searching
                       ? null
-                      : () => _attemptConnection('192.168.1.50'),
-                  icon: _searching
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 1.5),
-                        )
-                      : const Icon(Icons.radar, size: 16),
-                  label: Text(_searching ? 'Searching local network...' : 'Scan Local Network'),
-                ),
-              ),
+                      : () => _attemptConnection('192.168.1.50')),
             ],
           ),
         ),
 
         const SizedBox(height: 16),
 
-        // Option 2: Enter address manually
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(kRadiusCard),
-            border: Border.all(color: borderColor, width: 1),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter device address',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Enter your device IP address or local hostname.',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textSecondary),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _addressController,
-                decoration: const InputDecoration(
-                  hintText: 'e.g. 192.168.1.50 or lat.local',
-                ),
-                keyboardType: TextInputType.url,
-                autocorrect: false,
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _searching
-                      ? null
-                      : () => _attemptConnection(_addressController.text),
-                  child: const Text('Connect'),
-                ),
-              ),
-            ],
-          ),
-        ),
+        Material(
+            color: Colors.transparent,
+            child: InkWell(
+                onTap: () =>
+                    setState(() => _showManualAddress = !_showManualAddress),
+                borderRadius: BorderRadius.circular(kRadiusCard),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                      color: surfaceColor,
+                      borderRadius: BorderRadius.circular(kRadiusCard),
+                      border: Border.all(color: borderColor, width: 1)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Expanded(
+                            child: Text('Enter an address manually',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w600))),
+                        Icon(
+                            _showManualAddress
+                                ? Icons.expand_less
+                                : Icons.expand_more,
+                            size: 20)
+                      ]),
+                      if (_showManualAddress) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                            'If you already know your device address, enter it here.',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: textSecondary)),
+                        const SizedBox(height: 12),
+                        TextField(
+                            controller: _addressController,
+                            decoration: const InputDecoration(
+                                hintText: 'e.g. 192.168.1.50 or lat.local'),
+                            keyboardType: TextInputType.url,
+                            autocorrect: false),
+                        const SizedBox(height: 12),
+                        DetaHubButton(
+                            label: 'Connect device',
+                            expand: true,
+                            onPressed: _searching
+                                ? null
+                                : () =>
+                                    _attemptConnection(_addressController.text))
+                      ],
+                    ],
+                  ),
+                ))),
 
         if (_connectError != null) ...[
           const SizedBox(height: 16),
@@ -400,7 +447,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.error_outline, size: 18, color: AppColors.aqiPoor),
+                const Icon(Icons.error_outline,
+                    size: 18, color: AppColors.aqiPoor),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -426,7 +474,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
     final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final textSecondary =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -455,7 +504,10 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
         Center(
           child: Text(
             'Successfully communicated with your $_productName.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textSecondary),
+            style: Theme.of(context)
+                .textTheme
+                .bodyMedium
+                ?.copyWith(color: textSecondary),
           ),
         ),
         const SizedBox(height: 32),
@@ -472,7 +524,7 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'HARDWARE SPECIFICATION',
+                'YOUR DEVICE',
                 style: AppTheme.monoStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w600,
@@ -483,22 +535,21 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
               const SizedBox(height: 10),
               _infoRow('Model', _productName),
               _infoRow('ID', _discoveredManifest?.deviceId ?? 'lat-001'),
-              _infoRow('Firmware', _discoveredManifest?.firmwareVersion ?? 'v1.0.0'),
-              _infoRow('Connection', _finalUrl),
+              _infoRow('Measures', 'Air quality, temperature, humidity'),
             ],
           ),
         ),
 
         const SizedBox(height: 32),
-        ElevatedButton(
-          onPressed: () {
-            setState(() {
-              _deviceNameController.text = _productName;
-              _step = WizardStep.placement;
-            });
-          },
-          child: const Text('Continue'),
-        ),
+        DetaHubButton(
+            label: 'Continue',
+            expand: true,
+            onPressed: () {
+              setState(() {
+                _deviceNameController.text = _productName;
+                _step = WizardStep.placement;
+              });
+            }),
       ],
     );
   }
@@ -520,7 +571,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
         if (_selectedSectorId == null && hierarchy.isNotEmpty) {
           _selectedSectorId = hierarchy.first.sector.id;
           if (hierarchy.first.subSectors.isNotEmpty) {
-            _selectedSubSectorId = hierarchy.first.subSectors.first.subSector.id;
+            _selectedSubSectorId =
+                hierarchy.first.subSectors.first.subSector.id;
           }
         }
 
@@ -539,7 +591,10 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
             const SizedBox(height: 6),
             Text(
               'Assign a friendly name and organization location for this device.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: textSecondary),
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium
+                  ?.copyWith(color: textSecondary),
             ),
             const SizedBox(height: 24),
 
@@ -600,8 +655,10 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
                 onChanged: (val) {
                   setState(() {
                     _selectedSectorId = val;
-                    final s = hierarchy.where((x) => x.sector.id == val).firstOrNull;
-                    _selectedSubSectorId = s?.subSectors.firstOrNull?.subSector.id;
+                    final s =
+                        hierarchy.where((x) => x.sector.id == val).firstOrNull;
+                    _selectedSubSectorId =
+                        s?.subSectors.firstOrNull?.subSector.id;
                   });
                 },
               ),
@@ -622,7 +679,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
                 ),
                 if (_selectedSectorId != null)
                   TextButton(
-                    onPressed: () => _promptNewArea(context, _selectedSectorId!),
+                    onPressed: () =>
+                        _promptNewArea(context, _selectedSectorId!),
                     child: const Text('+ New Area'),
                   ),
               ],
@@ -654,19 +712,10 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
 
             const SizedBox(height: 36),
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _saveDevice,
-                child: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.white),
-                      )
-                    : const Text('Save & Finish'),
-              ),
-            ),
+            DetaHubButton(
+                label: _saving ? 'Saving device…' : 'Save & finish',
+                expand: true,
+                onPressed: _saving ? null : _saveDevice),
           ],
         );
       },
@@ -713,26 +762,27 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
           const SizedBox(height: 40),
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                final deviceId =
-                    _savedDeviceId ?? _discoveredManifest?.deviceId;
-                if (deviceId != null) {
-                  context.go('/devices/$deviceId');
-                } else {
-                  context.go('/home');
-                }
-              },
-              child: const Text('View Device'),
-            ),
+            child: DetaHubButton(
+                label: 'View device',
+                expand: true,
+                onPressed: () {
+                  final deviceId =
+                      _savedDeviceId ?? _discoveredManifest?.deviceId;
+                  if (deviceId != null) {
+                    context.go('/devices/$deviceId');
+                  } else {
+                    context.go('/home');
+                  }
+                }),
           ),
           const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton(
-              onPressed: () => context.go('/home'),
-              child: const Text('Done'),
-            ),
+            child: DetaHubButton(
+                label: 'Done',
+                outlined: true,
+                expand: true,
+                onPressed: () => context.go('/home')),
           ),
         ],
       ),
@@ -748,7 +798,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
           Text(label, style: Theme.of(context).textTheme.bodySmall),
           Text(
             value,
-            style: AppTheme.monoStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            style:
+                AppTheme.monoStyle(fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -765,10 +816,12 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'e.g. Universitas Trisakti, Home'),
+          decoration: const InputDecoration(
+              hintText: 'e.g. Universitas Trisakti, Home'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Add'),
@@ -791,10 +844,12 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'e.g. Lab IoT, Ruang Server, Lt. 3'),
+          decoration: const InputDecoration(
+              hintText: 'e.g. Lab IoT, Ruang Server, Lt. 3'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Add'),
@@ -804,7 +859,9 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
     );
 
     if (name != null && name.isNotEmpty) {
-      await ref.read(subSectorMutationProvider.notifier).addSubSector(sectorId, name);
+      await ref
+          .read(subSectorMutationProvider.notifier)
+          .addSubSector(sectorId, name);
     }
   }
 }

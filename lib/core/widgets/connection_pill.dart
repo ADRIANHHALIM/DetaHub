@@ -6,7 +6,6 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
-import '../theme/app_theme.dart';
 
 enum ConnectionStatus { online, offline, checking }
 
@@ -57,31 +56,32 @@ class _ConnectionPillState extends State<ConnectionPill>
       ConnectionStatus.online => (
           AppColors.aqiExcellent.withValues(alpha: 0.12),
           AppColors.aqiExcellent,
-          'ONLINE',
+          'Connected',
         ),
       ConnectionStatus.offline => (
-          AppColors.border.withValues(alpha: 0.4),
-          AppColors.border,
-          'OFFLINE',
+          AppColors.aqiPoor.withValues(alpha: 0.12),
+          AppColors.aqiPoor,
+          'Offline',
         ),
       ConnectionStatus.checking => (
           AppColors.aqiModerate.withValues(alpha: 0.12),
           AppColors.aqiModerate,
-          'CHECKING',
+          'Checking',
         ),
     };
 
     final pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
         color: bg,
-        border: Border.all(color: border, width: 1),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         label,
-        style: AppTheme.monoStyle(fontSize: 9, fontWeight: FontWeight.w600)
-            .copyWith(color: border),
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: border, fontWeight: FontWeight.w700),
       ),
     );
 
