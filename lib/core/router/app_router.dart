@@ -14,8 +14,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/device/screens/device_form_screen.dart';
 import '../../features/device/screens/device_list_screen.dart';
-import '../../features/sector/screens/sector_list_screen.dart';
+import '../../features/home/screens/home_screen.dart';
+import '../../features/sector/screens/products_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../widgets/floating_nav_bar.dart';
 
 // ---------------------------------------------------------------------------
 // Router provider
@@ -23,7 +25,7 @@ import '../../features/settings/screens/settings_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/sectors',
+    initialLocation: '/home',
     debugLogDiagnostics: false,
     routes: [
       // Shell route provides the persistent bottom navigation bar.
@@ -32,11 +34,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return _AppShell(child: child);
         },
         routes: [
-          // Tab 0: Sector hierarchy
+          // Tab 0: Home dashboard
           GoRoute(
-            path: '/sectors',
+            path: '/home',
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: SectorListScreen(),
+              child: HomeScreen(),
+            ),
+          ),
+
+          // Tab 1: Products (Sector hierarchy)
+          GoRoute(
+            path: '/products',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: ProductsScreen(),
             ),
             routes: [
               // Sub-Sector → Device list
@@ -94,11 +104,13 @@ class _AppShell extends StatelessWidget {
 
   const _AppShell({required this.child});
 
-  static const _tabs = ['/sectors', '/settings'];
+  static const _tabs = ['/home', '/products', '/settings'];
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
-    if (location.startsWith('/settings')) return 1;
+    if (location.startsWith('/home')) return 0;
+    if (location.startsWith('/products')) return 1;
+    if (location.startsWith('/settings')) return 2;
     return 0;
   }
 
@@ -108,39 +120,31 @@ class _AppShell extends StatelessWidget {
 
     return Scaffold(
       body: child,
-      bottomNavigationBar: Container(
-        // 1px top border — DetaDesign: no elevation, explicit border instead.
-        decoration: BoxDecoration(
-          border: Border(
-            top: BorderSide(
-              color: Theme.of(context).dividerColor,
-              width: 1,
-            ),
+      extendBody: true, // Allow body to flow under the floating nav bar
+      bottomNavigationBar: FloatingNavBar(
+        selectedIndex: currentIndex,
+        onDestinationSelected: (index) {
+          if (index != currentIndex) {
+            context.go(_tabs[index]);
+          }
+        },
+        destinations: const [
+          FloatingNavDestination(
+            icon: Icons.dashboard_outlined,
+            selectedIcon: Icons.dashboard,
+            label: 'Home',
           ),
-        ),
-        child: NavigationBar(
-          selectedIndex: currentIndex,
-          elevation: 0,
-          height: 60,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-          onDestinationSelected: (index) {
-            if (index != currentIndex) {
-              context.go(_tabs[index]);
-            }
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.device_hub_outlined),
-              selectedIcon: Icon(Icons.device_hub),
-              label: 'Devices',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.tune_outlined),
-              selectedIcon: Icon(Icons.tune),
-              label: 'Settings',
-            ),
-          ],
-        ),
+          FloatingNavDestination(
+            icon: Icons.device_hub_outlined,
+            selectedIcon: Icons.device_hub,
+            label: 'Products',
+          ),
+          FloatingNavDestination(
+            icon: Icons.tune_outlined,
+            selectedIcon: Icons.tune,
+            label: 'Settings',
+          ),
+        ],
       ),
     );
   }

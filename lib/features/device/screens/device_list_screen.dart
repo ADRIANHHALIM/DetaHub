@@ -51,7 +51,7 @@ class DeviceListScreen extends ConsumerWidget {
           if (devices.isEmpty) {
             return _EmptyDeviceState(
               onAdd: () => context.push(
-                  '/sectors/0/sub/$subSectorId/add-device'),
+                  '/products/0/sub/$subSectorId/add-device'),
             );
           }
           return ListView.separated(
@@ -76,7 +76,7 @@ class DeviceListScreen extends ConsumerWidget {
           side: BorderSide(color: borderColor),
         ),
         onPressed: () =>
-            context.push('/sectors/0/sub/$subSectorId/add-device'),
+            context.push('/products/0/sub/$subSectorId/add-device'),
         child: Icon(Icons.add,
             size: 20,
             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),

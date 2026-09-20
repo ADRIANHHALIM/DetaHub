@@ -18,6 +18,10 @@ class DeviceDao extends DatabaseAccessor<AppDatabase> with _$DeviceDaoMixin {
 
   // --- Read ---
 
+  /// Reactive stream of all devices across all sub-sectors.
+  Stream<List<Device>> watchAllDevices() =>
+      (select(devices)..orderBy([(d) => OrderingTerm.asc(d.createdAt)])).watch();
+
   /// Reactive stream of all devices within a given sub-sector.
   /// Emits a new list whenever any device in that sub-sector changes.
   Stream<List<Device>> watchDevicesForSubSector(int subSectorId) =>

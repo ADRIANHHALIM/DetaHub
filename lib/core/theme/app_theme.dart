@@ -15,16 +15,18 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'app_colors.dart';
 
-/// Maximum allowed border radius in the DetaDesign system.
-/// Larger values violate the "Industrial Instrument" aesthetic.
-const _kBorderRadius = 4.0;
+/// Modular border radius definitions from Idea/Style.md Section 5.
+const kRadiusCard = 10.0;
+const kRadiusChip = 4.0;
+const kRadiusModal = 16.0;
+const kRadiusButton = 6.0;
 
-/// Standard 1px border width for all interactive components.
-const _kBorderWidth = 1.0;
+/// Standard 1px border width for all interactive components (Style.md 5).
+const kBorderWidth = 1.0;
 
 abstract final class AppTheme {
   // ─────────────────────────────────────────────────────────────────────────
-  // Typography
+  // Typography (Idea/Style.md Section 3)
   // ─────────────────────────────────────────────────────────────────────────
 
   /// Inter — primary UI typeface.
@@ -40,17 +42,17 @@ abstract final class AppTheme {
         displaySmall:
             TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: primaryColor),
 
-        // Headline styles — card titles, group labels
+        // Section Title: 18px · Bold · Sans-Serif · Tracking -0.02em (Style.md 3)
         headlineLarge:
-            TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: primaryColor),
+            TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: primaryColor),
         headlineMedium:
-            TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: primaryColor),
+            TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: primaryColor, letterSpacing: -0.36),
         headlineSmall:
             TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: primaryColor),
 
-        // Title styles — list items, dialog titles
+        // Card Header: 14px · Medium · Sans-Serif (Style.md 3)
         titleLarge:
-            TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: primaryColor),
+            TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: primaryColor),
         titleMedium:
             TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: primaryColor),
         titleSmall:
@@ -75,25 +77,28 @@ abstract final class AppTheme {
     );
   }
 
-  /// JetBrains Mono — monospace typeface for numeric data.
+  /// JetBrains Mono — monospace typeface for numeric data, units, and timestamps.
   ///
-  /// Apply this explicitly to any widget showing telemetry values:
-  ///   style: AppTheme.monoStyle(fontSize: 28, fontWeight: FontWeight.w600)
+  /// Style.md 3:
+  /// - Metric Display: 44px · SemiBold · Monospace
+  /// - Subtitle / Unit: 12px · Regular · Monospace · All Caps · Tracking +0.05em
+  /// - Caption / Timestamp: 11px · Regular · Monospace
   static TextStyle monoStyle({
     double fontSize = 14,
     FontWeight fontWeight = FontWeight.w400,
     Color? color,
+    double? letterSpacing,
   }) {
     return GoogleFonts.jetBrainsMono(
       fontSize: fontSize,
       fontWeight: fontWeight,
       color: color,
-      letterSpacing: -0.5, // Tighter for dense numeric displays
+      letterSpacing: letterSpacing ?? -0.5,
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Light Theme (default)
+  // Light Theme (Default) — Style.md 2.1
   // ─────────────────────────────────────────────────────────────────────────
 
   static ThemeData get light {
@@ -106,7 +111,9 @@ abstract final class AppTheme {
       colorScheme: const ColorScheme.light(
         surface: AppColors.surface,
         onSurface: AppColors.textPrimary,
+        surfaceContainerHighest: AppColors.surfaceVariant,
         outline: AppColors.border,
+        outlineVariant: AppColors.borderSubtle,
         primary: AppColors.accent,
         onPrimary: AppColors.surface,
         secondary: AppColors.textSecondary,
@@ -130,48 +137,48 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        // 1px bottom border instead of elevation shadow.
         shape: const Border(
-          bottom: BorderSide(color: AppColors.border, width: _kBorderWidth),
+          bottom: BorderSide(color: AppColors.border, width: kBorderWidth),
         ),
       ),
 
-      // --- Cards ---
+      // --- Cards (Style.md 5: 10px radius, 1px border) ---
       cardTheme: const CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
         color: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(_kBorderRadius)),
-          side: BorderSide(color: AppColors.border, width: _kBorderWidth),
+          borderRadius: BorderRadius.all(Radius.circular(kRadiusCard)),
+          side: BorderSide(color: AppColors.border, width: kBorderWidth),
         ),
       ),
 
       // --- Inputs ---
       inputDecorationTheme: InputDecorationTheme(
-        filled: false,
+        filled: true,
+        fillColor: AppColors.surface,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusButton),
           borderSide:
-              const BorderSide(color: AppColors.border, width: _kBorderWidth),
+              const BorderSide(color: AppColors.border, width: kBorderWidth),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusButton),
           borderSide:
-              const BorderSide(color: AppColors.border, width: _kBorderWidth),
+              const BorderSide(color: AppColors.border, width: kBorderWidth),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusButton),
           borderSide:
-              const BorderSide(color: AppColors.accent, width: _kBorderWidth),
+              const BorderSide(color: AppColors.accent, width: kBorderWidth),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusButton),
           borderSide:
-              const BorderSide(color: AppColors.aqiPoor, width: _kBorderWidth),
+              const BorderSide(color: AppColors.aqiPoor, width: kBorderWidth),
         ),
         hintStyle: const TextStyle(
           color: AppColors.textMuted,
@@ -191,10 +198,11 @@ abstract final class AppTheme {
           backgroundColor: AppColors.accent,
           foregroundColor: AppColors.surface,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_kBorderRadius),
+            borderRadius: BorderRadius.circular(kRadiusButton),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w500),
+              fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -202,12 +210,13 @@ abstract final class AppTheme {
           elevation: 0,
           foregroundColor: AppColors.textPrimary,
           side: const BorderSide(
-              color: AppColors.border, width: _kBorderWidth),
+              color: AppColors.border, width: kBorderWidth),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_kBorderRadius),
+            borderRadius: BorderRadius.circular(kRadiusButton),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w500),
+              fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -216,7 +225,7 @@ abstract final class AppTheme {
           textStyle: GoogleFonts.inter(
               fontSize: 13, fontWeight: FontWeight.w500),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_kBorderRadius),
+            borderRadius: BorderRadius.circular(kRadiusButton),
           ),
         ),
       ),
@@ -235,15 +244,15 @@ abstract final class AppTheme {
         minLeadingWidth: 20,
       ),
 
-      // --- Dialog ---
+      // --- Dialog (Style.md 5: 10px radius) ---
       dialogTheme: DialogThemeData(
         elevation: 0,
         backgroundColor: AppColors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusCard),
           side:
-              const BorderSide(color: AppColors.border, width: _kBorderWidth),
+              const BorderSide(color: AppColors.border, width: kBorderWidth),
         ),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -256,27 +265,26 @@ abstract final class AppTheme {
         ),
       ),
 
-      // --- Chip ---
+      // --- Chip (Style.md 5: 4px radius) ---
       chipTheme: ChipThemeData(
         elevation: 0,
-        backgroundColor: AppColors.background,
+        backgroundColor: AppColors.surfaceVariant,
         side:
-            const BorderSide(color: AppColors.border, width: _kBorderWidth),
+            const BorderSide(color: AppColors.border, width: kBorderWidth),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusChip),
         ),
         labelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
       ),
 
-      // --- Bottom Navigation ---
-      navigationBarTheme: NavigationBarThemeData(
+      // --- Bottom Sheet (Style.md 5: 16px top corners) ---
+      bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.surface,
-        elevation: 0,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: AppColors.borderSubtle,
-        shadowColor: Colors.transparent,
-        labelTextStyle: WidgetStateProperty.all(
-          GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusModal)),
+          side: BorderSide(color: AppColors.border, width: kBorderWidth),
         ),
       ),
 
@@ -290,7 +298,7 @@ abstract final class AppTheme {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Dark OLED Theme
+  // Dark OLED Theme (LAT Web Native) — Style.md 2.1
   // ─────────────────────────────────────────────────────────────────────────
 
   static ThemeData get dark {
@@ -303,7 +311,9 @@ abstract final class AppTheme {
       colorScheme: const ColorScheme.dark(
         surface: AppColors.surfaceDark,
         onSurface: AppColors.textPrimaryDark,
+        surfaceContainerHighest: AppColors.surfaceVariantDark,
         outline: AppColors.borderDark,
+        outlineVariant: AppColors.borderSubtleDark,
         primary: AppColors.accentDark,
         onPrimary: AppColors.surfaceDark,
         secondary: AppColors.textSecondaryDark,
@@ -329,46 +339,47 @@ abstract final class AppTheme {
         ),
         shape: const Border(
           bottom:
-              BorderSide(color: AppColors.borderDark, width: _kBorderWidth),
+              BorderSide(color: AppColors.borderDark, width: kBorderWidth),
         ),
       ),
 
-      // --- Cards ---
+      // --- Cards (Style.md 5: 10px radius, 1px border) ---
       cardTheme: const CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
         color: AppColors.surfaceDark,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(_kBorderRadius)),
-          side: BorderSide(color: AppColors.borderDark, width: _kBorderWidth),
+          borderRadius: BorderRadius.all(Radius.circular(kRadiusCard)),
+          side: BorderSide(color: AppColors.borderDark, width: kBorderWidth),
         ),
       ),
 
       // --- Inputs ---
       inputDecorationTheme: InputDecorationTheme(
-        filled: false,
+        filled: true,
+        fillColor: AppColors.surfaceDark,
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusButton),
           borderSide: const BorderSide(
-              color: AppColors.borderDark, width: _kBorderWidth),
+              color: AppColors.borderDark, width: kBorderWidth),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusButton),
           borderSide: const BorderSide(
-              color: AppColors.borderDark, width: _kBorderWidth),
+              color: AppColors.borderDark, width: kBorderWidth),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusButton),
           borderSide: const BorderSide(
-              color: AppColors.accentDark, width: _kBorderWidth),
+              color: AppColors.accentDark, width: kBorderWidth),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusButton),
           borderSide:
-              const BorderSide(color: AppColors.aqiPoor, width: _kBorderWidth),
+              const BorderSide(color: AppColors.aqiPoor, width: kBorderWidth),
         ),
         hintStyle: const TextStyle(color: AppColors.textMutedDark, fontSize: 14),
         labelStyle: const TextStyle(
@@ -385,10 +396,11 @@ abstract final class AppTheme {
           backgroundColor: AppColors.accentDark,
           foregroundColor: AppColors.surfaceDark,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_kBorderRadius),
+            borderRadius: BorderRadius.circular(kRadiusButton),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w500),
+              fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -396,12 +408,13 @@ abstract final class AppTheme {
           elevation: 0,
           foregroundColor: AppColors.textPrimaryDark,
           side: const BorderSide(
-              color: AppColors.borderDark, width: _kBorderWidth),
+              color: AppColors.borderDark, width: kBorderWidth),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_kBorderRadius),
+            borderRadius: BorderRadius.circular(kRadiusButton),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w500),
+              fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -410,7 +423,7 @@ abstract final class AppTheme {
           textStyle: GoogleFonts.inter(
               fontSize: 13, fontWeight: FontWeight.w500),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(_kBorderRadius),
+            borderRadius: BorderRadius.circular(kRadiusButton),
           ),
         ),
       ),
@@ -429,15 +442,15 @@ abstract final class AppTheme {
         minLeadingWidth: 20,
       ),
 
-      // --- Dialog ---
+      // --- Dialog (Style.md 5: 10px radius) ---
       dialogTheme: DialogThemeData(
         elevation: 0,
         backgroundColor: AppColors.surfaceDark,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusCard),
           side: const BorderSide(
-              color: AppColors.borderDark, width: _kBorderWidth),
+              color: AppColors.borderDark, width: kBorderWidth),
         ),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -450,27 +463,26 @@ abstract final class AppTheme {
         ),
       ),
 
-      // --- Chip ---
+      // --- Chip (Style.md 5: 4px radius) ---
       chipTheme: ChipThemeData(
         elevation: 0,
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: AppColors.surfaceVariantDark,
         side: const BorderSide(
-            color: AppColors.borderDark, width: _kBorderWidth),
+            color: AppColors.borderDark, width: kBorderWidth),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_kBorderRadius),
+          borderRadius: BorderRadius.circular(kRadiusChip),
         ),
         labelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
       ),
 
-      // --- Bottom Navigation ---
-      navigationBarTheme: NavigationBarThemeData(
+      // --- Bottom Sheet (Style.md 5: 16px top corners) ---
+      bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.surfaceDark,
-        elevation: 0,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: AppColors.borderDark,
-        shadowColor: Colors.transparent,
-        labelTextStyle: WidgetStateProperty.all(
-          GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w500),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusModal)),
+          side: BorderSide(color: AppColors.borderDark, width: kBorderWidth),
         ),
       ),
 

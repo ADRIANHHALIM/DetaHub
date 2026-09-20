@@ -14,8 +14,8 @@ import '../../../core/theme/app_theme.dart';
 import '../providers/sector_providers.dart';
 import 'sector_form_bottom_sheet.dart';
 
-class SectorListScreen extends ConsumerWidget {
-  const SectorListScreen({super.key});
+class ProductsScreen extends ConsumerWidget {
+  const ProductsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -25,7 +25,8 @@ class SectorListScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DetaHub'),
+        title: const Text('Products'),
+        centerTitle: false,
         actions: [
           // Add Sector button
           IconButton(
@@ -80,7 +81,7 @@ class SectorListScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusModal)),
         side: BorderSide(color: AppColors.border),
       ),
       builder: (_) => SectorFormBottomSheet(
@@ -100,7 +101,7 @@ class SectorListScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Theme.of(context).colorScheme.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(4)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusModal)),
         side: BorderSide(color: AppColors.border),
       ),
       builder: (_) => SectorFormBottomSheet(
@@ -241,7 +242,7 @@ class _SubSectorRow extends ConsumerWidget {
     final textTheme = Theme.of(context).textTheme;
 
     return InkWell(
-      onTap: () => context.push('/sectors/${ss.subSector.sectorId}/sub/${ss.subSector.id}'),
+      onTap: () => context.push('/products/${ss.subSector.sectorId}/sub/${ss.subSector.id}'),
       onLongPress: () => _confirmDelete(context, ref),
       child: Container(
         padding: const EdgeInsets.fromLTRB(32, 10, 16, 10),

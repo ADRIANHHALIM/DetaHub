@@ -63,7 +63,7 @@ class MetricCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: surfaceColor,
           border: Border.all(color: borderColor, width: 1),
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(kRadiusCard),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
