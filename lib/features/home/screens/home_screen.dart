@@ -1,113 +1,56 @@
 // lib/features/home/screens/home_screen.dart
 //
-// Modern Technical Instrument Home Dashboard for DetaHub.
-// Adheres strictly to Idea/Style.md (DetaDesign System):
-// - Lab Instrument Aesthetic (Clean, precise, zero-cloud).
-// - Exact Color Tokens: #F8F9FA canvas, #FFFFFF surface, #D0D7DE border.
-// - JetBrains Mono for all numeric telemetries and status tags.
-// - Inter typography with precise tracking.
-// - Modular 10px radius for cards, 4px for badges/chips.
+// "Your devices" Home Dashboard (GitHub Issue #2).
+// Centered around the user mental model:
+// "I have a device, where is it located, and what is its data?"
+// Neutral by default; color communicates status only.
 
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/database/app_database.dart';
-import '../../../core/database/daos/device_dao.dart';
 import '../../../core/database/daos/sector_dao.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aqi_badge.dart';
-import '../../../core/widgets/connection_pill.dart';
-import '../../../core/widgets/metric_card.dart';
-import '../../device/providers/device_providers.dart';
+import '../../sector/providers/sector_providers.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final devicesAsync = ref.watch(watchAllDevicesProvider);
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  int? _selectedLocationId; // null = All Locations
+
+  @override
+  Widget build(BuildContext context) {
+    final devicesWithLocAsync = ref.watch(watchAllDevicesWithLocationProvider);
+    final sectorsAsync = ref.watch(watchAllSectorsProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
     final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final surfaceVariant = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
     final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Text(
-              'DetaHub',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: surfaceVariant,
-                borderRadius: BorderRadius.circular(kRadiusChip),
-                border: Border.all(color: borderColor, width: 1),
-              ),
-              child: Text(
-                'LOCAL INSTRUMENT',
-                style: AppTheme.monoStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  color: textSecondary,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-          ],
-        ),
+        title: const Text('DetaHub'),
         actions: [
-          // Subnet Status Pill
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.aqiGood.withValues(alpha: 0.1),
-              border: Border.all(color: AppColors.aqiGood, width: 1),
-              borderRadius: BorderRadius.circular(kRadiusChip),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: AppColors.aqiGood,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  'SUBNET ACTIVE',
-                  style: AppTheme.monoStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.aqiGood,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ],
-            ),
+          IconButton(
+            icon: const Icon(Icons.add, size: 22),
+            tooltip: 'Add Device',
+            onPressed: () => context.push('/add-device'),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 4),
         ],
       ),
       body: SafeArea(
         bottom: false,
-        child: devicesAsync.when(
+        child: devicesWithLocAsync.when(
           loading: () => const Center(
             child: SizedBox(
               width: 24,
@@ -115,104 +58,94 @@ class HomeScreen extends ConsumerWidget {
               child: CircularProgressIndicator(strokeWidth: 1.5),
             ),
           ),
-          error: (err, _) => Center(
-            child: Text('Database error: $err', style: const TextStyle(color: AppColors.aqiPoor)),
-          ),
-          data: (devices) {
+          error: (err, _) => Center(child: Text('Error loading devices: $err')),
+          data: (allDevices) {
+            // Filter devices by location if selected
+            final filteredDevices = _selectedLocationId == null
+                ? allDevices
+                : allDevices.where((d) => d.sectorId == _selectedLocationId).toList();
+
             return ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
               children: [
-                // Section Title (Style.md 3: 18px · Bold · Sans-Serif · Tracking -0.02em)
+                // Header: "Your devices" (Issue #2)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'SYSTEM OVERVIEW',
-                          style: Theme.of(context).textTheme.headlineMedium,
+                          'Your devices',
+                          style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.3,
+                              ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'ZERO-CLOUD · LOCAL SQLITE TELEMETRY',
-                          style: AppTheme.monoStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w500,
-                            color: textMuted,
-                            letterSpacing: 0.6,
-                          ),
+                          'Monitor your DetaLab devices',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: textSecondary,
+                              ),
                         ),
                       ],
                     ),
-                    OutlinedButton.icon(
-                      onPressed: () => context.go('/products'),
+                    ElevatedButton.icon(
+                      onPressed: () => context.push('/add-device'),
                       icon: const Icon(Icons.add, size: 16),
-                      label: const Text('Add Node'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      ),
+                      label: const Text('Add device'),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
-                // Hero Instrument Panel
-                if (devices.isEmpty)
-                  _buildEmptyHardwareShowcase(context, ref, isDark)
-                else
-                  _buildLiveSystemInstrument(context, devices, isDark),
+                // Location Filter Chips
+                sectorsAsync.when(
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                  data: (sectors) {
+                    if (sectors.isEmpty) return const SizedBox.shrink();
 
-                const SizedBox(height: 24),
-
-                // Connected Nodes Header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'CONNECTED HARDWARE NODES',
-                      style: AppTheme.monoStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: textSecondary,
-                        letterSpacing: 0.8,
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _filterChip(
+                              label: 'All Locations',
+                              isSelected: _selectedLocationId == null,
+                              onTap: () => setState(() => _selectedLocationId = null),
+                              isDark: isDark,
+                            ),
+                            const SizedBox(width: 8),
+                            ...sectors.map((sector) {
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8),
+                                child: _filterChip(
+                                  label: sector.name,
+                                  isSelected: _selectedLocationId == sector.id,
+                                  onTap: () => setState(() => _selectedLocationId = sector.id),
+                                  isDark: isDark,
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${devices.length} NODE${devices.length == 1 ? '' : 'S'} REGISTERED',
-                      style: AppTheme.monoStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: textMuted,
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-                const SizedBox(height: 10),
 
-                // Devices List
-                if (devices.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(kRadiusCard),
-                      border: Border.all(color: borderColor, width: 1),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'No physical devices paired on subnet yet.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textMuted),
-                      ),
-                    ),
-                  )
+                // Device Cards List
+                if (filteredDevices.isEmpty)
+                  _buildFriendlyEmptyState(context, isDark, allDevices.isEmpty)
                 else
-                  ...devices.map((device) => _buildDeviceNodeCard(context, ref, device, isDark)),
-
-                const SizedBox(height: 24),
-
-                // Industrial Architecture Footer Banner
-                _buildArchitectureFooter(context, isDark),
+                  ...filteredDevices.map(
+                    (item) => _buildDeviceCard(context, item, isDark, surfaceColor, borderColor, textSecondary, textMuted),
+                  ),
               ],
             );
           },
@@ -222,210 +155,73 @@ class HomeScreen extends ConsumerWidget {
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Hardware Showcase & Quickstart (When No Devices Yet)
+  // Location Filter Chip
   // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildEmptyHardwareShowcase(BuildContext context, WidgetRef ref, bool isDark) {
+  Widget _filterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
-    final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final surfaceVariant = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-    final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
+    final activeBg = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
+    final activeColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final inactiveColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(kRadiusCard),
-        border: Border.all(color: borderColor, width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(kRadiusChip),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? activeBg : Colors.transparent,
+          borderRadius: BorderRadius.circular(kRadiusChip),
+          border: Border.all(
+            color: isSelected ? activeColor : borderColor,
+            width: 1,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Card Header Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: surfaceVariant,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusCard - 1)),
-              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.memory, size: 16, color: AppColors.aqiGood),
-                    const SizedBox(width: 8),
-                    Text(
-                      'HARDWARE PLATFORM · ESP32-H2',
-                      style: AppTheme.monoStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: textSecondary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: AppColors.aqiGood.withValues(alpha: 0.15),
-                    border: Border.all(color: AppColors.aqiGood, width: 1),
-                    borderRadius: BorderRadius.circular(kRadiusChip),
-                  ),
-                  child: Text(
-                    'LAT ENS160',
-                    style: AppTheme.monoStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.aqiGood,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Lightweight Air Tester (LAT)',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Connected physical instrument monitor. Streams live eCO₂, TVOC, temperature & relative humidity directly over local Wi-Fi / mDNS without internet.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: textSecondary,
-                        height: 1.4,
-                      ),
-                ),
-                const SizedBox(height: 14),
-
-                // Hardware Sensor Chips (Style.md 5: 4px radius)
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _buildSpecChip('ENS160 MOX Gas', isDark),
-                    _buildSpecChip('SHT40 Temp/RH', isDark),
-                    _buildSpecChip('Local REST API', isDark),
-                    _buildSpecChip('mDNS ZeroConf', isDark),
-                    _buildSpecChip('Drift SQLite Store', isDark),
-                  ],
-                ),
-
-                const SizedBox(height: 16),
-                const Divider(height: 1),
-                const SizedBox(height: 16),
-
-                // Sensor Readout Preview Strip (Scientific Air Quality Palette)
-                Text(
-                  'SCIENTIFIC TELEMETRY DISPLAY SPECIFICATION',
-                  style: AppTheme.monoStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: textMuted,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const SizedBox(height: 10),
-
-                // 4-Column Live Metric Grid with Style.md 4.5 Chart Colors
-                const Row(
-                  children: [
-                    Expanded(
-                      child: MetricCard(
-                        label: 'eCO₂',
-                        value: '480',
-                        unit: 'PPM',
-                        valueColor: AppColors.metricEco2,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: MetricCard(
-                        label: 'TVOC',
-                        value: '115',
-                        unit: 'PPB',
-                        valueColor: AppColors.metricTvoc,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Row(
-                  children: [
-                    Expanded(
-                      child: MetricCard(
-                        label: 'TEMP',
-                        value: '24.8',
-                        unit: '°C',
-                        valueColor: AppColors.metricTemperature,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: MetricCard(
-                        label: 'HUMIDITY',
-                        value: '58.2',
-                        unit: '%',
-                        valueColor: AppColors.metricHumidity,
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 18),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        onPressed: () => context.go('/products'),
-                        icon: const Icon(Icons.add_link, size: 16),
-                        label: const Text('Pair LAT Device'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _seedSampleDevice(ref),
-                        icon: const Icon(Icons.bolt, size: 16, color: AppColors.aqiGood),
-                        label: const Text('Add Demo Node'),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
+        child: Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                color: isSelected ? activeColor : inactiveColor,
+              ),
+        ),
       ),
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Live System Instrument (When Devices Exist)
+  // Device Card (Directly following Issue #2 mockup)
+  // ┌─────────────────────────────────────┐
+  // │ Lightweight Air Tester              │
+  // │ Lab IoT · Universitas Trisakti      │
+  // │                                     │
+  // │ Air quality                         │
+  // │ 42 (or Good)                        │
+  // │                                     │
+  // │ Temperature       Humidity          │
+  // │ 27.4 °C           61 %              │
+  // │                                     │
+  // │ ● Connected                         │
+  // │ Updated 12 sec ago                  │
+  // └─────────────────────────────────────┘
   // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildLiveSystemInstrument(BuildContext context, List<Device> devices, bool isDark) {
-    final borderColor = isDark ? AppColors.borderDark : AppColors.border;
-    final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final surfaceVariant = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+  Widget _buildDeviceCard(
+    BuildContext context,
+    DeviceWithLocation item,
+    bool isDark,
+    Color surfaceColor,
+    Color borderColor,
+    Color textSecondary,
+    Color textMuted,
+  ) {
+    final device = item.device;
+    const aqi = 1; // Default/latest AQI
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: surfaceColor,
         borderRadius: BorderRadius.circular(kRadiusCard),
@@ -438,325 +234,228 @@ class HomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: surfaceVariant,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(kRadiusCard - 1)),
-              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'AGGREGATE LAB TELEMETRY',
-                  style: AppTheme.monoStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: textSecondary,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-                const AqiBadge(aqi: 1),
-              ],
-            ),
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                // Discrete AQI 5-Step Bar (Style.md 4.5)
-                Row(
-                  children: List.generate(5, (index) {
-                    final level = index + 1;
-                    final isActive = level == 1; // Good
-                    final color = AppColors.forAqi(level);
-
-                    return Expanded(
-                      child: Container(
-                        height: 6,
-                        margin: EdgeInsets.only(right: index == 4 ? 0 : 4),
-                        decoration: BoxDecoration(
-                          color: isActive ? color : color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(2),
-                          border: Border.all(
-                            color: isActive ? color : color.withValues(alpha: 0.3),
-                            width: 1,
-                          ),
+      child: InkWell(
+        onTap: () => context.push('/devices/${device.id}'),
+        borderRadius: BorderRadius.circular(kRadiusCard),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Device Name & Subtitle (Area · Location)
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          device.name,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'LEVEL 1 · GOOD (ENS160)',
-                      style: AppTheme.monoStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.aqiGood,
-                      ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '${item.areaName} · ${item.locationName}',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: textSecondary,
+                              ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      'TARGET: < 800 PPM eCO₂',
-                      style: AppTheme.monoStyle(fontSize: 10, color: textSecondary),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                  ),
+                  const Icon(Icons.chevron_right, size: 20, color: AppColors.textSecondary),
+                ],
+              ),
 
-                // 4-Card Sensor Display
-                const Row(
-                  children: [
-                    Expanded(
-                      child: MetricCard(
-                        label: 'eCO₂',
-                        value: '495',
-                        unit: 'PPM',
-                        valueColor: AppColors.metricEco2,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: MetricCard(
-                        label: 'TVOC',
-                        value: '130',
-                        unit: 'PPB',
-                        valueColor: AppColors.metricTvoc,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                const Row(
-                  children: [
-                    Expanded(
-                      child: MetricCard(
-                        label: 'TEMP',
-                        value: '25.2',
-                        unit: '°C',
-                        valueColor: AppColors.metricTemperature,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: MetricCard(
-                        label: 'HUMIDITY',
-                        value: '56.4',
-                        unit: '%',
-                        valueColor: AppColors.metricHumidity,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+              const SizedBox(height: 16),
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Registered Device Card
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildDeviceNodeCard(BuildContext context, WidgetRef ref, Device device, bool isDark) {
-    final borderColor = isDark ? AppColors.borderDark : AppColors.border;
-    final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-    final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
+              // Air Quality Reading
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Air quality',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: textSecondary,
+                            ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            '42',
+                            style: AppTheme.monoStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'AQI',
+                            style: AppTheme.monoStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const AqiBadge(aqi: aqi),
+                ],
+              ),
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(kRadiusCard),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: Row(
-        children: [
-          // Device Icon Container
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(kRadiusChip),
-              border: Border.all(color: borderColor, width: 1),
-            ),
-            child: const Icon(Icons.router, size: 20, color: AppColors.aqiGood),
-          ),
-          const SizedBox(width: 12),
+              const SizedBox(height: 16),
+              Divider(height: 1, color: borderColor),
+              const SizedBox(height: 14),
 
-          // Device Details
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      device.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              // Secondary Metrics: Temperature & Humidity (Neutral by default)
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Temperature',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: textSecondary,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '27.4 °C',
+                          style: AppTheme.monoStyle(
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                           ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    const ConnectionPill(status: ConnectionStatus.online),
-                  ],
-                ),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Text(
-                      device.id,
-                      style: AppTheme.monoStyle(fontSize: 10, color: textMuted),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Humidity',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: textSecondary,
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '61 %',
+                          style: AppTheme.monoStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      ' · ${device.baseUrl}',
-                      style: AppTheme.monoStyle(fontSize: 10, color: textSecondary),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 16),
+              Divider(height: 1, color: borderColor),
+              const SizedBox(height: 12),
+
+              // Footer: Connection status & Last updated timestamp
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: AppColors.aqiGood,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Connected',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppColors.aqiGood,
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'Updated recently',
+                    style: AppTheme.monoStyle(
+                      fontSize: 11,
+                      color: textMuted,
                     ),
-                  ],
-                ),
-              ],
-            ),
+                  ),
+                ],
+              ),
+            ],
           ),
-
-          // Navigate / Inspect
-          IconButton(
-            icon: Icon(Icons.arrow_forward, size: 16, color: textSecondary),
-            onPressed: () => context.go('/products'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Specs Chip
-  // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildSpecChip(String text, bool isDark) {
-    final borderColor = isDark ? AppColors.borderDark : AppColors.border;
-    final surfaceVariant = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: surfaceVariant,
-        borderRadius: BorderRadius.circular(kRadiusChip),
-        border: Border.all(color: borderColor, width: 1),
-      ),
-      child: Text(
-        text,
-        style: AppTheme.monoStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w500,
-          color: textSecondary,
         ),
       ),
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // Architecture & Privacy Footer
+  // Friendly Empty State
   // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildArchitectureFooter(BuildContext context, bool isDark) {
+  Widget _buildFriendlyEmptyState(BuildContext context, bool isDark, bool noDevicesAtAll) {
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
-    final surfaceVariant = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
+    final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
+    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
       decoration: BoxDecoration(
-        color: surfaceVariant,
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(kRadiusCard),
         border: Border.all(color: borderColor, width: 1),
       ),
-      child: Row(
+      child: Column(
         children: [
-          const Icon(Icons.shield_outlined, size: 18, color: AppColors.aqiGood),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '100% LOCAL-FIRST · ZERO CLOUD PRIVACY',
-                  style: AppTheme.monoStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.aqiGood,
-                    letterSpacing: 0.5,
-                  ),
+          Icon(Icons.air_outlined, size: 48, color: textMuted),
+          const SizedBox(height: 16),
+          Text(
+            noDevicesAtAll ? 'No devices connected yet' : 'No devices in this location',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  'All telemetry stored locally in SQLite via Drift. No telemetry leaves your local network.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: textMuted,
-                        fontSize: 11,
-                      ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            noDevicesAtAll
+                ? 'Connect your Lightweight Air Tester to start monitoring air quality, temperature, and humidity locally.'
+                : 'Select another location or tap below to add a device here.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: textSecondary,
+                  height: 1.4,
                 ),
-              ],
-            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => context.push('/add-device'),
+            icon: const Icon(Icons.add, size: 18),
+            label: const Text('Add device'),
           ),
         ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Instant Demo Node Seeder (for iOS simulator testing)
-  // ─────────────────────────────────────────────────────────────────────────
-  Future<void> _seedSampleDevice(WidgetRef ref) async {
-    final sectorDao = ref.read(sectorDaoProvider);
-    final deviceDao = ref.read(deviceDaoProvider);
-
-    // 1. Ensure Sector exists
-    final sectors = await sectorDao.watchAllSectors().first;
-    int sectorId;
-    if (sectors.isEmpty) {
-      sectorId = await sectorDao.insertSector(
-        const SectorsCompanion(name: Value('Research Campus')),
-      );
-    } else {
-      sectorId = sectors.first.id;
-    }
-
-    // 2. Ensure SubSector exists
-    final subSectors = await sectorDao.watchSubSectorsForSector(sectorId).first;
-    int subSectorId;
-    if (subSectors.isEmpty) {
-      subSectorId = await sectorDao.insertSubSector(
-        SubSectorsCompanion(
-          name: const Value('Main IoT Laboratory'),
-          sectorId: Value(sectorId),
-        ),
-      );
-    } else {
-      subSectorId = subSectors.first.id;
-    }
-
-    // 3. Upsert Sample Device
-    await deviceDao.upsertDevice(
-      DevicesCompanion(
-        id: const Value('lat-esp32h2-01'),
-        subSectorId: Value(subSectorId),
-        name: const Value('LAT Air Tester #01'),
-        baseUrl: const Value('http://192.168.1.100'),
-        productType: const Value('LAT_ENS160'),
-        createdAt: Value(DateTime.now()),
-        lastSeenAt: Value(DateTime.now()),
       ),
     );
   }
