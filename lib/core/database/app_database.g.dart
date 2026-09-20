@@ -1408,22 +1408,147 @@ typedef $$SectorsTableUpdateCompanionBuilder = SectorsCompanion Function({
   Value<DateTime> createdAt,
 });
 
+final class $$SectorsTableReferences
+    extends BaseReferences<_$AppDatabase, $SectorsTable, Sector> {
+  $$SectorsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static MultiTypedResultKey<$SubSectorsTable, List<SubSector>>
+      _subSectorsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.subSectors,
+              aliasName:
+                  $_aliasNameGenerator(db.sectors.id, db.subSectors.sectorId));
+
+  $$SubSectorsTableProcessedTableManager get subSectorsRefs {
+    final manager = $$SubSectorsTableTableManager($_db, $_db.subSectors)
+        .filter((f) => f.sectorId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_subSectorsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$SectorsTableFilterComposer
+    extends Composer<_$AppDatabase, $SectorsTable> {
+  $$SectorsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  Expression<bool> subSectorsRefs(
+      Expression<bool> Function($$SubSectorsTableFilterComposer f) f) {
+    final $$SubSectorsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.subSectors,
+        getReferencedColumn: (t) => t.sectorId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SubSectorsTableFilterComposer(
+              $db: $db,
+              $table: $db.subSectors,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SectorsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SectorsTable> {
+  $$SectorsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$SectorsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SectorsTable> {
+  $$SectorsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> subSectorsRefs<T extends Object>(
+      Expression<T> Function($$SubSectorsTableAnnotationComposer a) f) {
+    final $$SubSectorsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.subSectors,
+        getReferencedColumn: (t) => t.sectorId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SubSectorsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.subSectors,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
 class $$SectorsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $SectorsTable,
     Sector,
     $$SectorsTableFilterComposer,
     $$SectorsTableOrderingComposer,
+    $$SectorsTableAnnotationComposer,
     $$SectorsTableCreateCompanionBuilder,
-    $$SectorsTableUpdateCompanionBuilder> {
+    $$SectorsTableUpdateCompanionBuilder,
+    (Sector, $$SectorsTableReferences),
+    Sector,
+    PrefetchHooks Function({bool subSectorsRefs})> {
   $$SectorsTableTableManager(_$AppDatabase db, $SectorsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$SectorsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$SectorsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$SectorsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SectorsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SectorsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<String> name = const Value.absent(),
@@ -1444,60 +1569,48 @@ class $$SectorsTableTableManager extends RootTableManager<
             name: name,
             createdAt: createdAt,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$SectorsTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: ({subSectorsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (subSectorsRefs) db.subSectors],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (subSectorsRefs)
+                    await $_getPrefetchedData<Sector, $SectorsTable, SubSector>(
+                        currentTable: table,
+                        referencedTable:
+                            $$SectorsTableReferences._subSectorsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SectorsTableReferences(db, table, p0)
+                                .subSectorsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.sectorId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
-class $$SectorsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $SectorsTable> {
-  $$SectorsTableFilterComposer(super.$state);
-  ColumnFilters<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get name => $state.composableBuilder(
-      column: $state.table.name,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ComposableFilter subSectorsRefs(
-      ComposableFilter Function($$SubSectorsTableFilterComposer f) f) {
-    final $$SubSectorsTableFilterComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $state.db.subSectors,
-        getReferencedColumn: (t) => t.sectorId,
-        builder: (joinBuilder, parentComposers) =>
-            $$SubSectorsTableFilterComposer(ComposerState($state.db,
-                $state.db.subSectors, joinBuilder, parentComposers)));
-    return f(composer);
-  }
-}
-
-class $$SectorsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $SectorsTable> {
-  $$SectorsTableOrderingComposer(super.$state);
-  ColumnOrderings<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get name => $state.composableBuilder(
-      column: $state.table.name,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-}
-
+typedef $$SectorsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SectorsTable,
+    Sector,
+    $$SectorsTableFilterComposer,
+    $$SectorsTableOrderingComposer,
+    $$SectorsTableAnnotationComposer,
+    $$SectorsTableCreateCompanionBuilder,
+    $$SectorsTableUpdateCompanionBuilder,
+    (Sector, $$SectorsTableReferences),
+    Sector,
+    PrefetchHooks Function({bool subSectorsRefs})>;
 typedef $$SubSectorsTableCreateCompanionBuilder = SubSectorsCompanion Function({
   Value<int> id,
   required String name,
@@ -1511,22 +1624,221 @@ typedef $$SubSectorsTableUpdateCompanionBuilder = SubSectorsCompanion Function({
   Value<DateTime> createdAt,
 });
 
+final class $$SubSectorsTableReferences
+    extends BaseReferences<_$AppDatabase, $SubSectorsTable, SubSector> {
+  $$SubSectorsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SectorsTable _sectorIdTable(_$AppDatabase db) => db.sectors
+      .createAlias($_aliasNameGenerator(db.subSectors.sectorId, db.sectors.id));
+
+  $$SectorsTableProcessedTableManager get sectorId {
+    final $_column = $_itemColumn<int>('sector_id')!;
+
+    final manager = $$SectorsTableTableManager($_db, $_db.sectors)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_sectorIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static MultiTypedResultKey<$DevicesTable, List<Device>> _devicesRefsTable(
+          _$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(db.devices,
+          aliasName:
+              $_aliasNameGenerator(db.subSectors.id, db.devices.subSectorId));
+
+  $$DevicesTableProcessedTableManager get devicesRefs {
+    final manager = $$DevicesTableTableManager($_db, $_db.devices)
+        .filter((f) => f.subSectorId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_devicesRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$SubSectorsTableFilterComposer
+    extends Composer<_$AppDatabase, $SubSectorsTable> {
+  $$SubSectorsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  $$SectorsTableFilterComposer get sectorId {
+    final $$SectorsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sectorId,
+        referencedTable: $db.sectors,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SectorsTableFilterComposer(
+              $db: $db,
+              $table: $db.sectors,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<bool> devicesRefs(
+      Expression<bool> Function($$DevicesTableFilterComposer f) f) {
+    final $$DevicesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.devices,
+        getReferencedColumn: (t) => t.subSectorId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$DevicesTableFilterComposer(
+              $db: $db,
+              $table: $db.devices,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$SubSectorsTableOrderingComposer
+    extends Composer<_$AppDatabase, $SubSectorsTable> {
+  $$SubSectorsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  $$SectorsTableOrderingComposer get sectorId {
+    final $$SectorsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sectorId,
+        referencedTable: $db.sectors,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SectorsTableOrderingComposer(
+              $db: $db,
+              $table: $db.sectors,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$SubSectorsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SubSectorsTable> {
+  $$SubSectorsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$SectorsTableAnnotationComposer get sectorId {
+    final $$SectorsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.sectorId,
+        referencedTable: $db.sectors,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SectorsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.sectors,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<T> devicesRefs<T extends Object>(
+      Expression<T> Function($$DevicesTableAnnotationComposer a) f) {
+    final $$DevicesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.devices,
+        getReferencedColumn: (t) => t.subSectorId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$DevicesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.devices,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
 class $$SubSectorsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $SubSectorsTable,
     SubSector,
     $$SubSectorsTableFilterComposer,
     $$SubSectorsTableOrderingComposer,
+    $$SubSectorsTableAnnotationComposer,
     $$SubSectorsTableCreateCompanionBuilder,
-    $$SubSectorsTableUpdateCompanionBuilder> {
+    $$SubSectorsTableUpdateCompanionBuilder,
+    (SubSector, $$SubSectorsTableReferences),
+    SubSector,
+    PrefetchHooks Function({bool sectorId, bool devicesRefs})> {
   $$SubSectorsTableTableManager(_$AppDatabase db, $SubSectorsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$SubSectorsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$SubSectorsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$SubSectorsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SubSectorsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SubSectorsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<String> name = const Value.absent(),
@@ -1551,84 +1863,76 @@ class $$SubSectorsTableTableManager extends RootTableManager<
             sectorId: sectorId,
             createdAt: createdAt,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$SubSectorsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({sectorId = false, devicesRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (devicesRefs) db.devices],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (sectorId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.sectorId,
+                    referencedTable:
+                        $$SubSectorsTableReferences._sectorIdTable(db),
+                    referencedColumn:
+                        $$SubSectorsTableReferences._sectorIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (devicesRefs)
+                    await $_getPrefetchedData<SubSector, $SubSectorsTable,
+                            Device>(
+                        currentTable: table,
+                        referencedTable:
+                            $$SubSectorsTableReferences._devicesRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$SubSectorsTableReferences(db, table, p0)
+                                .devicesRefs,
+                        referencedItemsForCurrentItem:
+                            (item, referencedItems) => referencedItems
+                                .where((e) => e.subSectorId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
-class $$SubSectorsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $SubSectorsTable> {
-  $$SubSectorsTableFilterComposer(super.$state);
-  ColumnFilters<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get name => $state.composableBuilder(
-      column: $state.table.name,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  $$SectorsTableFilterComposer get sectorId {
-    final $$SectorsTableFilterComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.sectorId,
-        referencedTable: $state.db.sectors,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder, parentComposers) => $$SectorsTableFilterComposer(
-            ComposerState(
-                $state.db, $state.db.sectors, joinBuilder, parentComposers)));
-    return composer;
-  }
-
-  ComposableFilter devicesRefs(
-      ComposableFilter Function($$DevicesTableFilterComposer f) f) {
-    final $$DevicesTableFilterComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.id,
-        referencedTable: $state.db.devices,
-        getReferencedColumn: (t) => t.subSectorId,
-        builder: (joinBuilder, parentComposers) => $$DevicesTableFilterComposer(
-            ComposerState(
-                $state.db, $state.db.devices, joinBuilder, parentComposers)));
-    return f(composer);
-  }
-}
-
-class $$SubSectorsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $SubSectorsTable> {
-  $$SubSectorsTableOrderingComposer(super.$state);
-  ColumnOrderings<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get name => $state.composableBuilder(
-      column: $state.table.name,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  $$SectorsTableOrderingComposer get sectorId {
-    final $$SectorsTableOrderingComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.sectorId,
-        referencedTable: $state.db.sectors,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder, parentComposers) =>
-            $$SectorsTableOrderingComposer(ComposerState(
-                $state.db, $state.db.sectors, joinBuilder, parentComposers)));
-    return composer;
-  }
-}
-
+typedef $$SubSectorsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $SubSectorsTable,
+    SubSector,
+    $$SubSectorsTableFilterComposer,
+    $$SubSectorsTableOrderingComposer,
+    $$SubSectorsTableAnnotationComposer,
+    $$SubSectorsTableCreateCompanionBuilder,
+    $$SubSectorsTableUpdateCompanionBuilder,
+    (SubSector, $$SubSectorsTableReferences),
+    SubSector,
+    PrefetchHooks Function({bool sectorId, bool devicesRefs})>;
 typedef $$DevicesTableCreateCompanionBuilder = DevicesCompanion Function({
   required String id,
   required String name,
@@ -1650,22 +1954,251 @@ typedef $$DevicesTableUpdateCompanionBuilder = DevicesCompanion Function({
   Value<int> rowid,
 });
 
+final class $$DevicesTableReferences
+    extends BaseReferences<_$AppDatabase, $DevicesTable, Device> {
+  $$DevicesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $SubSectorsTable _subSectorIdTable(_$AppDatabase db) =>
+      db.subSectors.createAlias(
+          $_aliasNameGenerator(db.devices.subSectorId, db.subSectors.id));
+
+  $$SubSectorsTableProcessedTableManager get subSectorId {
+    final $_column = $_itemColumn<int>('sub_sector_id')!;
+
+    final manager = $$SubSectorsTableTableManager($_db, $_db.subSectors)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_subSectorIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+
+  static MultiTypedResultKey<$TelemetryRecordsTable, List<TelemetryRecord>>
+      _telemetryRecordsRefsTable(_$AppDatabase db) =>
+          MultiTypedResultKey.fromTable(db.telemetryRecords,
+              aliasName: $_aliasNameGenerator(
+                  db.devices.id, db.telemetryRecords.deviceId));
+
+  $$TelemetryRecordsTableProcessedTableManager get telemetryRecordsRefs {
+    final manager = $$TelemetryRecordsTableTableManager(
+            $_db, $_db.telemetryRecords)
+        .filter((f) => f.deviceId.id.sqlEquals($_itemColumn<String>('id')!));
+
+    final cache =
+        $_typedResult.readTableOrNull(_telemetryRecordsRefsTable($_db));
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: cache));
+  }
+}
+
+class $$DevicesTableFilterComposer
+    extends Composer<_$AppDatabase, $DevicesTable> {
+  $$DevicesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get baseUrl => $composableBuilder(
+      column: $table.baseUrl, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get productType => $composableBuilder(
+      column: $table.productType, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastSeenAt => $composableBuilder(
+      column: $table.lastSeenAt, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+
+  $$SubSectorsTableFilterComposer get subSectorId {
+    final $$SubSectorsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.subSectorId,
+        referencedTable: $db.subSectors,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SubSectorsTableFilterComposer(
+              $db: $db,
+              $table: $db.subSectors,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<bool> telemetryRecordsRefs(
+      Expression<bool> Function($$TelemetryRecordsTableFilterComposer f) f) {
+    final $$TelemetryRecordsTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.telemetryRecords,
+        getReferencedColumn: (t) => t.deviceId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TelemetryRecordsTableFilterComposer(
+              $db: $db,
+              $table: $db.telemetryRecords,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
+class $$DevicesTableOrderingComposer
+    extends Composer<_$AppDatabase, $DevicesTable> {
+  $$DevicesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get baseUrl => $composableBuilder(
+      column: $table.baseUrl, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get productType => $composableBuilder(
+      column: $table.productType, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastSeenAt => $composableBuilder(
+      column: $table.lastSeenAt, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+
+  $$SubSectorsTableOrderingComposer get subSectorId {
+    final $$SubSectorsTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.subSectorId,
+        referencedTable: $db.subSectors,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SubSectorsTableOrderingComposer(
+              $db: $db,
+              $table: $db.subSectors,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$DevicesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $DevicesTable> {
+  $$DevicesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get baseUrl =>
+      $composableBuilder(column: $table.baseUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get productType => $composableBuilder(
+      column: $table.productType, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastSeenAt => $composableBuilder(
+      column: $table.lastSeenAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$SubSectorsTableAnnotationComposer get subSectorId {
+    final $$SubSectorsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.subSectorId,
+        referencedTable: $db.subSectors,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$SubSectorsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.subSectors,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+
+  Expression<T> telemetryRecordsRefs<T extends Object>(
+      Expression<T> Function($$TelemetryRecordsTableAnnotationComposer a) f) {
+    final $$TelemetryRecordsTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.id,
+        referencedTable: $db.telemetryRecords,
+        getReferencedColumn: (t) => t.deviceId,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$TelemetryRecordsTableAnnotationComposer(
+              $db: $db,
+              $table: $db.telemetryRecords,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return f(composer);
+  }
+}
+
 class $$DevicesTableTableManager extends RootTableManager<
     _$AppDatabase,
     $DevicesTable,
     Device,
     $$DevicesTableFilterComposer,
     $$DevicesTableOrderingComposer,
+    $$DevicesTableAnnotationComposer,
     $$DevicesTableCreateCompanionBuilder,
-    $$DevicesTableUpdateCompanionBuilder> {
+    $$DevicesTableUpdateCompanionBuilder,
+    (Device, $$DevicesTableReferences),
+    Device,
+    PrefetchHooks Function({bool subSectorId, bool telemetryRecordsRefs})> {
   $$DevicesTableTableManager(_$AppDatabase db, $DevicesTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$DevicesTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$DevicesTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$DevicesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DevicesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DevicesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<String> id = const Value.absent(),
             Value<String> name = const Value.absent(),
@@ -1706,115 +2239,77 @@ class $$DevicesTableTableManager extends RootTableManager<
             createdAt: createdAt,
             rowid: rowid,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) =>
+                  (e.readTable(table), $$DevicesTableReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: (
+              {subSectorId = false, telemetryRecordsRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [
+                if (telemetryRecordsRefs) db.telemetryRecords
+              ],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (subSectorId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.subSectorId,
+                    referencedTable:
+                        $$DevicesTableReferences._subSectorIdTable(db),
+                    referencedColumn:
+                        $$DevicesTableReferences._subSectorIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (telemetryRecordsRefs)
+                    await $_getPrefetchedData<Device, $DevicesTable,
+                            TelemetryRecord>(
+                        currentTable: table,
+                        referencedTable: $$DevicesTableReferences
+                            ._telemetryRecordsRefsTable(db),
+                        managerFromTypedResult: (p0) =>
+                            $$DevicesTableReferences(db, table, p0)
+                                .telemetryRecordsRefs,
+                        referencedItemsForCurrentItem: (item,
+                                referencedItems) =>
+                            referencedItems.where((e) => e.deviceId == item.id),
+                        typedResults: items)
+                ];
+              },
+            );
+          },
         ));
 }
 
-class $$DevicesTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $DevicesTable> {
-  $$DevicesTableFilterComposer(super.$state);
-  ColumnFilters<String> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get name => $state.composableBuilder(
-      column: $state.table.name,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get baseUrl => $state.composableBuilder(
-      column: $state.table.baseUrl,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<String> get productType => $state.composableBuilder(
-      column: $state.table.productType,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get lastSeenAt => $state.composableBuilder(
-      column: $state.table.lastSeenAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  $$SubSectorsTableFilterComposer get subSectorId {
-    final $$SubSectorsTableFilterComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.subSectorId,
-        referencedTable: $state.db.subSectors,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder, parentComposers) =>
-            $$SubSectorsTableFilterComposer(ComposerState($state.db,
-                $state.db.subSectors, joinBuilder, parentComposers)));
-    return composer;
-  }
-
-  ComposableFilter telemetryRecordsRefs(
-      ComposableFilter Function($$TelemetryRecordsTableFilterComposer f) f) {
-    final $$TelemetryRecordsTableFilterComposer composer =
-        $state.composerBuilder(
-            composer: this,
-            getCurrentColumn: (t) => t.id,
-            referencedTable: $state.db.telemetryRecords,
-            getReferencedColumn: (t) => t.deviceId,
-            builder: (joinBuilder, parentComposers) =>
-                $$TelemetryRecordsTableFilterComposer(ComposerState($state.db,
-                    $state.db.telemetryRecords, joinBuilder, parentComposers)));
-    return f(composer);
-  }
-}
-
-class $$DevicesTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $DevicesTable> {
-  $$DevicesTableOrderingComposer(super.$state);
-  ColumnOrderings<String> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get name => $state.composableBuilder(
-      column: $state.table.name,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get baseUrl => $state.composableBuilder(
-      column: $state.table.baseUrl,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<String> get productType => $state.composableBuilder(
-      column: $state.table.productType,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get lastSeenAt => $state.composableBuilder(
-      column: $state.table.lastSeenAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get createdAt => $state.composableBuilder(
-      column: $state.table.createdAt,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  $$SubSectorsTableOrderingComposer get subSectorId {
-    final $$SubSectorsTableOrderingComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.subSectorId,
-        referencedTable: $state.db.subSectors,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder, parentComposers) =>
-            $$SubSectorsTableOrderingComposer(ComposerState($state.db,
-                $state.db.subSectors, joinBuilder, parentComposers)));
-    return composer;
-  }
-}
-
+typedef $$DevicesTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $DevicesTable,
+    Device,
+    $$DevicesTableFilterComposer,
+    $$DevicesTableOrderingComposer,
+    $$DevicesTableAnnotationComposer,
+    $$DevicesTableCreateCompanionBuilder,
+    $$DevicesTableUpdateCompanionBuilder,
+    (Device, $$DevicesTableReferences),
+    Device,
+    PrefetchHooks Function({bool subSectorId, bool telemetryRecordsRefs})>;
 typedef $$TelemetryRecordsTableCreateCompanionBuilder
     = TelemetryRecordsCompanion Function({
   Value<int> id,
@@ -1838,23 +2333,203 @@ typedef $$TelemetryRecordsTableUpdateCompanionBuilder
   Value<int?> aqi,
 });
 
+final class $$TelemetryRecordsTableReferences extends BaseReferences<
+    _$AppDatabase, $TelemetryRecordsTable, TelemetryRecord> {
+  $$TelemetryRecordsTableReferences(
+      super.$_db, super.$_table, super.$_typedResult);
+
+  static $DevicesTable _deviceIdTable(_$AppDatabase db) =>
+      db.devices.createAlias(
+          $_aliasNameGenerator(db.telemetryRecords.deviceId, db.devices.id));
+
+  $$DevicesTableProcessedTableManager get deviceId {
+    final $_column = $_itemColumn<String>('device_id')!;
+
+    final manager = $$DevicesTableTableManager($_db, $_db.devices)
+        .filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_deviceIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+        manager.$state.copyWith(prefetchedData: [item]));
+  }
+}
+
+class $$TelemetryRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $TelemetryRecordsTable> {
+  $$TelemetryRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+      column: $table.timestamp, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get temperature => $composableBuilder(
+      column: $table.temperature, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<double> get humidity => $composableBuilder(
+      column: $table.humidity, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get eco2 => $composableBuilder(
+      column: $table.eco2, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get tvoc => $composableBuilder(
+      column: $table.tvoc, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get aqi => $composableBuilder(
+      column: $table.aqi, builder: (column) => ColumnFilters(column));
+
+  $$DevicesTableFilterComposer get deviceId {
+    final $$DevicesTableFilterComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.deviceId,
+        referencedTable: $db.devices,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$DevicesTableFilterComposer(
+              $db: $db,
+              $table: $db.devices,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TelemetryRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TelemetryRecordsTable> {
+  $$TelemetryRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+      column: $table.timestamp, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get temperature => $composableBuilder(
+      column: $table.temperature, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<double> get humidity => $composableBuilder(
+      column: $table.humidity, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get eco2 => $composableBuilder(
+      column: $table.eco2, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get tvoc => $composableBuilder(
+      column: $table.tvoc, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get aqi => $composableBuilder(
+      column: $table.aqi, builder: (column) => ColumnOrderings(column));
+
+  $$DevicesTableOrderingComposer get deviceId {
+    final $$DevicesTableOrderingComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.deviceId,
+        referencedTable: $db.devices,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$DevicesTableOrderingComposer(
+              $db: $db,
+              $table: $db.devices,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
+class $$TelemetryRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TelemetryRecordsTable> {
+  $$TelemetryRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+
+  GeneratedColumn<double> get temperature => $composableBuilder(
+      column: $table.temperature, builder: (column) => column);
+
+  GeneratedColumn<double> get humidity =>
+      $composableBuilder(column: $table.humidity, builder: (column) => column);
+
+  GeneratedColumn<int> get eco2 =>
+      $composableBuilder(column: $table.eco2, builder: (column) => column);
+
+  GeneratedColumn<int> get tvoc =>
+      $composableBuilder(column: $table.tvoc, builder: (column) => column);
+
+  GeneratedColumn<int> get aqi =>
+      $composableBuilder(column: $table.aqi, builder: (column) => column);
+
+  $$DevicesTableAnnotationComposer get deviceId {
+    final $$DevicesTableAnnotationComposer composer = $composerBuilder(
+        composer: this,
+        getCurrentColumn: (t) => t.deviceId,
+        referencedTable: $db.devices,
+        getReferencedColumn: (t) => t.id,
+        builder: (joinBuilder,
+                {$addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer}) =>
+            $$DevicesTableAnnotationComposer(
+              $db: $db,
+              $table: $db.devices,
+              $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+              joinBuilder: joinBuilder,
+              $removeJoinBuilderFromRootComposer:
+                  $removeJoinBuilderFromRootComposer,
+            ));
+    return composer;
+  }
+}
+
 class $$TelemetryRecordsTableTableManager extends RootTableManager<
     _$AppDatabase,
     $TelemetryRecordsTable,
     TelemetryRecord,
     $$TelemetryRecordsTableFilterComposer,
     $$TelemetryRecordsTableOrderingComposer,
+    $$TelemetryRecordsTableAnnotationComposer,
     $$TelemetryRecordsTableCreateCompanionBuilder,
-    $$TelemetryRecordsTableUpdateCompanionBuilder> {
+    $$TelemetryRecordsTableUpdateCompanionBuilder,
+    (TelemetryRecord, $$TelemetryRecordsTableReferences),
+    TelemetryRecord,
+    PrefetchHooks Function({bool deviceId})> {
   $$TelemetryRecordsTableTableManager(
       _$AppDatabase db, $TelemetryRecordsTable table)
       : super(TableManagerState(
           db: db,
           table: table,
-          filteringComposer:
-              $$TelemetryRecordsTableFilterComposer(ComposerState(db, table)),
-          orderingComposer:
-              $$TelemetryRecordsTableOrderingComposer(ComposerState(db, table)),
+          createFilteringComposer: () =>
+              $$TelemetryRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TelemetryRecordsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TelemetryRecordsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback: ({
             Value<int> id = const Value.absent(),
             Value<String> deviceId = const Value.absent(),
@@ -1895,110 +2570,62 @@ class $$TelemetryRecordsTableTableManager extends RootTableManager<
             tvoc: tvoc,
             aqi: aqi,
           ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (
+                    e.readTable(table),
+                    $$TelemetryRecordsTableReferences(db, table, e)
+                  ))
+              .toList(),
+          prefetchHooksCallback: ({deviceId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins: <
+                  T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic>>(state) {
+                if (deviceId) {
+                  state = state.withJoin(
+                    currentTable: table,
+                    currentColumn: table.deviceId,
+                    referencedTable:
+                        $$TelemetryRecordsTableReferences._deviceIdTable(db),
+                    referencedColumn:
+                        $$TelemetryRecordsTableReferences._deviceIdTable(db).id,
+                  ) as T;
+                }
+
+                return state;
+              },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
         ));
 }
 
-class $$TelemetryRecordsTableFilterComposer
-    extends FilterComposer<_$AppDatabase, $TelemetryRecordsTable> {
-  $$TelemetryRecordsTableFilterComposer(super.$state);
-  ColumnFilters<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<DateTime> get timestamp => $state.composableBuilder(
-      column: $state.table.timestamp,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<double> get temperature => $state.composableBuilder(
-      column: $state.table.temperature,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<double> get humidity => $state.composableBuilder(
-      column: $state.table.humidity,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get eco2 => $state.composableBuilder(
-      column: $state.table.eco2,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get tvoc => $state.composableBuilder(
-      column: $state.table.tvoc,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  ColumnFilters<int> get aqi => $state.composableBuilder(
-      column: $state.table.aqi,
-      builder: (column, joinBuilders) =>
-          ColumnFilters(column, joinBuilders: joinBuilders));
-
-  $$DevicesTableFilterComposer get deviceId {
-    final $$DevicesTableFilterComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.deviceId,
-        referencedTable: $state.db.devices,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder, parentComposers) => $$DevicesTableFilterComposer(
-            ComposerState(
-                $state.db, $state.db.devices, joinBuilder, parentComposers)));
-    return composer;
-  }
-}
-
-class $$TelemetryRecordsTableOrderingComposer
-    extends OrderingComposer<_$AppDatabase, $TelemetryRecordsTable> {
-  $$TelemetryRecordsTableOrderingComposer(super.$state);
-  ColumnOrderings<int> get id => $state.composableBuilder(
-      column: $state.table.id,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<DateTime> get timestamp => $state.composableBuilder(
-      column: $state.table.timestamp,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<double> get temperature => $state.composableBuilder(
-      column: $state.table.temperature,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<double> get humidity => $state.composableBuilder(
-      column: $state.table.humidity,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get eco2 => $state.composableBuilder(
-      column: $state.table.eco2,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get tvoc => $state.composableBuilder(
-      column: $state.table.tvoc,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  ColumnOrderings<int> get aqi => $state.composableBuilder(
-      column: $state.table.aqi,
-      builder: (column, joinBuilders) =>
-          ColumnOrderings(column, joinBuilders: joinBuilders));
-
-  $$DevicesTableOrderingComposer get deviceId {
-    final $$DevicesTableOrderingComposer composer = $state.composerBuilder(
-        composer: this,
-        getCurrentColumn: (t) => t.deviceId,
-        referencedTable: $state.db.devices,
-        getReferencedColumn: (t) => t.id,
-        builder: (joinBuilder, parentComposers) =>
-            $$DevicesTableOrderingComposer(ComposerState(
-                $state.db, $state.db.devices, joinBuilder, parentComposers)));
-    return composer;
-  }
-}
+typedef $$TelemetryRecordsTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $TelemetryRecordsTable,
+    TelemetryRecord,
+    $$TelemetryRecordsTableFilterComposer,
+    $$TelemetryRecordsTableOrderingComposer,
+    $$TelemetryRecordsTableAnnotationComposer,
+    $$TelemetryRecordsTableCreateCompanionBuilder,
+    $$TelemetryRecordsTableUpdateCompanionBuilder,
+    (TelemetryRecord, $$TelemetryRecordsTableReferences),
+    TelemetryRecord,
+    PrefetchHooks Function({bool deviceId})>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;

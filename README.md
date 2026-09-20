@@ -4,10 +4,9 @@
 
 [![Flutter](https://img.shields.io/badge/Flutter-3.24+-02569B?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev)
 [![Dart](https://img.shields.io/badge/Dart-3.4+-0175C2?style=flat-square&logo=dart&logoColor=white)](https://dart.dev)
-[![License: MIT](https://img.shields.io/badge/License-MIT-1C1917?style=flat-square)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-10B981?style=flat-square)](#)
 
-> NO CLOUD. NO LOGIN. YOUR DATA.
+> NO CLOUD. NO LOGIN. NO SHARE. SAVE YOUR OWN DATA.
 
 ---
 
@@ -199,6 +198,3 @@ Contributions are welcome. Please follow standard Git workflow:
 
 ---
 
-## License
-
-MIT License. See [LICENSE](LICENSE) for details.
