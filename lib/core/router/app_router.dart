@@ -12,10 +12,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/device/screens/add_device_wizard_screen.dart';
+import '../../features/device/screens/device_detail_screen.dart';
 import '../../features/device/screens/device_form_screen.dart';
 import '../../features/device/screens/device_list_screen.dart';
 import '../../features/home/screens/home_screen.dart';
-import '../../features/sector/screens/products_screen.dart';
+import '../../features/sector/screens/locations_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../widgets/floating_nav_bar.dart';
 
@@ -28,6 +30,30 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/home',
     debugLogDiagnostics: false,
     routes: [
+      // Direct redirect for backwards-compatibility with /products
+      GoRoute(
+        path: '/products',
+        redirect: (context, state) => '/locations',
+      ),
+
+      // Global routes pushed on root navigator (full-screen modal/dedicated view)
+      GoRoute(
+        path: '/add-device',
+        pageBuilder: (context, state) => const MaterialPage(
+          fullscreenDialog: true,
+          child: AddDeviceWizardScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/devices/:deviceId',
+        pageBuilder: (context, state) {
+          final deviceId = state.pathParameters['deviceId']!;
+          return MaterialPage(
+            child: DeviceDetailScreen(deviceId: deviceId),
+          );
+        },
+      ),
+
       // Shell route provides the persistent bottom navigation bar.
       ShellRoute(
         builder: (context, state, child) {
@@ -42,20 +68,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
 
-          // Tab 1: Products (Sector hierarchy)
+          // Tab 1: Locations (Sector & Area hierarchy)
           GoRoute(
-            path: '/products',
+            path: '/locations',
             pageBuilder: (context, state) => const NoTransitionPage(
-              child: ProductsScreen(),
+              child: LocationsScreen(),
             ),
             routes: [
-              // Sub-Sector → Device list
+              // Sub-Sector / Area → Device list drill-down
               GoRoute(
                 path: ':sectorId/sub/:subSectorId',
                 pageBuilder: (context, state) {
                   final subSectorId =
                       int.parse(state.pathParameters['subSectorId']!);
-                  // Sub-sector name is passed as a query param for the AppBar title.
                   final name =
                       state.uri.queryParameters['name'] ?? 'Devices';
                   return MaterialPage(
@@ -66,7 +91,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   );
                 },
                 routes: [
-                  // Add device form
                   GoRoute(
                     path: 'add-device',
                     pageBuilder: (context, state) {
@@ -82,7 +106,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
 
-          // Tab 1: Settings
+          // Tab 2: Settings
           GoRoute(
             path: '/settings',
             pageBuilder: (context, state) => const NoTransitionPage(
@@ -104,12 +128,12 @@ class _AppShell extends StatelessWidget {
 
   const _AppShell({required this.child});
 
-  static const _tabs = ['/home', '/products', '/settings'];
+  static const _tabs = ['/home', '/locations', '/settings'];
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/products')) return 1;
+    if (location.startsWith('/locations')) return 1;
     if (location.startsWith('/settings')) return 2;
     return 0;
   }
@@ -135,9 +159,9 @@ class _AppShell extends StatelessWidget {
             label: 'Home',
           ),
           FloatingNavDestination(
-            icon: Icons.device_hub_outlined,
-            selectedIcon: Icons.device_hub,
-            label: 'Products',
+            icon: Icons.apartment_outlined,
+            selectedIcon: Icons.apartment,
+            label: 'Locations',
           ),
           FloatingNavDestination(
             icon: Icons.tune_outlined,

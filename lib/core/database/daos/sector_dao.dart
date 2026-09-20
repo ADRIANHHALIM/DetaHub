@@ -39,6 +39,24 @@ class SubSectorWithDeviceCount {
   });
 }
 
+/// Enriched Device representation containing its Area (SubSector) and Location (Sector) names.
+/// Maps internal database hierarchy to user mental model (Issue #2).
+class DeviceWithLocation {
+  final Device device;
+  final String areaName;
+  final String locationName;
+  final int sectorId;
+  final int subSectorId;
+
+  const DeviceWithLocation({
+    required this.device,
+    required this.areaName,
+    required this.locationName,
+    required this.sectorId,
+    required this.subSectorId,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // DAO
 // ---------------------------------------------------------------------------
@@ -139,6 +157,47 @@ class SectorDao extends DatabaseAccessor<AppDatabase> with _$SectorDaoMixin {
             .toList(),
       );
     }).toList();
+  }
+
+  // --- Devices with Location (User Mental Model) ---
+
+  /// Reactive stream of all devices enriched with their Area (SubSector) and Location (Sector).
+  Stream<List<DeviceWithLocation>> watchAllDevicesWithLocation() {
+    final query = select(devices).join([
+      innerJoin(subSectors, subSectors.id.equalsExp(devices.subSectorId)),
+      innerJoin(sectors, sectors.id.equalsExp(subSectors.sectorId)),
+    ])..orderBy([OrderingTerm.asc(devices.createdAt)]);
+
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        return DeviceWithLocation(
+          device: row.readTable(devices),
+          areaName: row.readTable(subSectors).name,
+          locationName: row.readTable(sectors).name,
+          sectorId: row.readTable(sectors).id,
+          subSectorId: row.readTable(subSectors).id,
+        );
+      }).toList();
+    });
+  }
+
+  /// Reactive stream for a single device enriched with Area and Location.
+  Stream<DeviceWithLocation?> watchDeviceWithLocation(String deviceId) {
+    final query = select(devices).join([
+      innerJoin(subSectors, subSectors.id.equalsExp(devices.subSectorId)),
+      innerJoin(sectors, sectors.id.equalsExp(subSectors.sectorId)),
+    ])..where(devices.id.equals(deviceId));
+
+    return query.watchSingleOrNull().map((row) {
+      if (row == null) return null;
+      return DeviceWithLocation(
+        device: row.readTable(devices),
+        areaName: row.readTable(subSectors).name,
+        locationName: row.readTable(sectors).name,
+        sectorId: row.readTable(sectors).id,
+        subSectorId: row.readTable(subSectors).id,
+      );
+    });
   }
 }
 

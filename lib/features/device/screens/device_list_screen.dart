@@ -50,8 +50,7 @@ class DeviceListScreen extends ConsumerWidget {
         data: (devices) {
           if (devices.isEmpty) {
             return _EmptyDeviceState(
-              onAdd: () => context.push(
-                  '/products/0/sub/$subSectorId/add-device'),
+              onAdd: () => context.push('/add-device'),
             );
           }
           return ListView.separated(
@@ -75,8 +74,7 @@ class DeviceListScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(4),
           side: BorderSide(color: borderColor),
         ),
-        onPressed: () =>
-            context.push('/products/0/sub/$subSectorId/add-device'),
+        onPressed: () => context.push('/add-device'),
         child: Icon(Icons.add,
             size: 20,
             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimary),
@@ -137,7 +135,7 @@ class _DeviceCard extends ConsumerWidget {
     );
 
     return InkWell(
-      onTap: () {}, // TODO(fase-3): navigate to device detail
+      onTap: () => context.push('/devices/${device.id}'),
       onLongPress: onDelete,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

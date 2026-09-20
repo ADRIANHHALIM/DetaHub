@@ -24,6 +24,18 @@ final watchFullHierarchyProvider =
   return ref.watch(sectorDaoProvider).watchFullHierarchy();
 });
 
+/// Reactive stream of all devices enriched with Area and Location names (Issue #2).
+final watchAllDevicesWithLocationProvider =
+    StreamProvider<List<DeviceWithLocation>>((ref) {
+  return ref.watch(sectorDaoProvider).watchAllDevicesWithLocation();
+});
+
+/// Reactive stream of a single device enriched with Area and Location names.
+final watchDeviceWithLocationProvider =
+    StreamProvider.family<DeviceWithLocation?, String>((ref, deviceId) {
+  return ref.watch(sectorDaoProvider).watchDeviceWithLocation(deviceId);
+});
+
 // ---------------------------------------------------------------------------
 // Sub-Sector providers
 // ---------------------------------------------------------------------------
