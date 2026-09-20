@@ -2,48 +2,42 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// A small geometric mark used throughout DetaHub. It deliberately avoids
-/// familiar network imagery: it is a quiet signature for a local product.
+/// The official DetaHub brand mark rendered from logo.png.
 class DetaHubMark extends StatelessWidget {
   final double size;
-  const DetaHubMark({super.key, this.size = 40});
+  final double? borderRadius;
+  const DetaHubMark({super.key, this.size = 40, this.borderRadius});
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final ink = dark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final radius = borderRadius ?? (size * .24);
+
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: dark ? AppColors.surfaceVariantDark : AppColors.accentSoft,
-        borderRadius: BorderRadius.circular(size * .32),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.35 : 0.06),
+            blurRadius: 4,
+            offset: const Offset(0, 1.5),
+          ),
+        ],
       ),
-      child: CustomPaint(painter: _DetaHubMarkPainter(ink)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: Image.asset(
+          'assets/images/logo.png',
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+        ),
+      ),
     );
   }
-}
-
-class _DetaHubMarkPainter extends CustomPainter {
-  final Color color;
-  const _DetaHubMarkPainter(this.color);
-  @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = color
-      ..strokeWidth = size.width * .09
-      ..strokeCap = StrokeCap.round;
-    final r = size.width * .11;
-    canvas.drawLine(Offset(size.width * .29, size.height * .31),
-        Offset(size.width * .29, size.height * .69), p);
-    canvas.drawLine(Offset(size.width * .29, size.height * .5),
-        Offset(size.width * .69, size.height * .5), p);
-    canvas.drawCircle(Offset(size.width * .7, size.height * .3), r, p);
-    canvas.drawCircle(Offset(size.width * .7, size.height * .7), r, p);
-  }
-
-  @override
-  bool shouldRepaint(covariant _DetaHubMarkPainter old) => old.color != color;
 }
 
 class DetaHubHeader extends StatelessWidget {

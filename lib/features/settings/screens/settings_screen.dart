@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/detahub_brand.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -56,7 +55,7 @@ class SettingsScreen extends StatelessWidget {
                         label: 'Local by design',
                         description: 'Your device data stays in your hands'),
                     _SettingRow(
-                        icon: Icons.info_outline,
+                        leading: DetaHubMark(size: 38),
                         label: 'DetaHub',
                         description: 'Local IoT Companion')
                   ]),
@@ -72,31 +71,30 @@ class _SettingGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final surface = dark ? AppColors.surfaceDark : AppColors.surface;
-    final border = dark ? AppColors.borderDark : AppColors.borderSubtle;
-    final secondary =
-        dark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(title,
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(color: secondary, fontWeight: FontWeight.w700)),
+      Text(title.toUpperCase(),
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              letterSpacing: 1.1,
+              fontWeight: FontWeight.w700,
+              fontSize: 11)),
       const SizedBox(height: 10),
       Container(
           decoration: BoxDecoration(
-              color: surface,
-              border: Border.all(color: border),
-              borderRadius: BorderRadius.circular(kRadiusCard)),
+              color: surface, borderRadius: BorderRadius.circular(20)),
           child: Column(children: children))
     ]);
   }
 }
 
 class _SettingRow extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final Widget? leading;
   final String label, description;
   const _SettingRow(
-      {required this.icon, required this.label, required this.description});
+      {this.icon,
+      this.leading,
+      required this.label,
+      required this.description});
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
@@ -111,15 +109,16 @@ class _SettingRow extends StatelessWidget {
             child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Row(children: [
-                  Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                          color: dark
-                              ? AppColors.surfaceVariantDark
-                              : AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(13)),
-                      child: Icon(icon, size: 19)),
+                  leading ??
+                      Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                              color: dark
+                                  ? AppColors.surfaceVariantDark
+                                  : AppColors.surfaceVariant,
+                              borderRadius: BorderRadius.circular(13)),
+                          child: Icon(icon, size: 19)),
                   const SizedBox(width: 12),
                   Expanded(
                       child: Column(
