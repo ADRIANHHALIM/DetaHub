@@ -17,6 +17,7 @@ import '../../features/device/screens/device_detail_screen.dart';
 import '../../features/device/screens/device_form_screen.dart';
 import '../../features/device/screens/device_list_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/product/screens/products_screen.dart';
 import '../../features/sector/screens/locations_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../widgets/floating_nav_bar.dart';
@@ -30,12 +31,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/home',
     debugLogDiagnostics: false,
     routes: [
-      // Direct redirect for backwards-compatibility with /products
-      GoRoute(
-        path: '/products',
-        redirect: (context, state) => '/locations',
-      ),
-
       // Global routes pushed on root navigator (full-screen modal/dedicated view)
       GoRoute(
         path: '/add-device',
@@ -68,7 +63,14 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             ),
           ),
 
-          // Tab 1: Locations (Sector & Area hierarchy)
+          // Tab 1: Product catalogue. Locations remain contextual navigation.
+          GoRoute(
+            path: '/products',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ProductsScreen()),
+          ),
+
+          // Secondary hierarchy navigation.
           GoRoute(
             path: '/locations',
             pageBuilder: (context, state) => const NoTransitionPage(
@@ -81,8 +83,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                 pageBuilder: (context, state) {
                   final subSectorId =
                       int.parse(state.pathParameters['subSectorId']!);
-                  final name =
-                      state.uri.queryParameters['name'] ?? 'Devices';
+                  final name = state.uri.queryParameters['name'] ?? 'Devices';
                   return MaterialPage(
                     child: DeviceListScreen(
                       subSectorId: subSectorId,
@@ -128,12 +129,12 @@ class _AppShell extends StatelessWidget {
 
   const _AppShell({required this.child});
 
-  static const _tabs = ['/home', '/locations', '/settings'];
+  static const _tabs = ['/home', '/products', '/settings'];
 
   int _currentIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.path;
     if (location.startsWith('/home')) return 0;
-    if (location.startsWith('/locations')) return 1;
+    if (location.startsWith('/products')) return 1;
     if (location.startsWith('/settings')) return 2;
     return 0;
   }
@@ -154,14 +155,14 @@ class _AppShell extends StatelessWidget {
         },
         destinations: const [
           FloatingNavDestination(
-            icon: Icons.dashboard_outlined,
-            selectedIcon: Icons.dashboard,
+            icon: Icons.home_outlined,
+            selectedIcon: Icons.home,
             label: 'Home',
           ),
           FloatingNavDestination(
-            icon: Icons.apartment_outlined,
-            selectedIcon: Icons.apartment,
-            label: 'Locations',
+            icon: Icons.inventory_2_outlined,
+            selectedIcon: Icons.inventory_2,
+            label: 'Products',
           ),
           FloatingNavDestination(
             icon: Icons.tune_outlined,

@@ -1,14 +1,6 @@
 // lib/core/theme/app_theme.dart
 //
-// DetaDesign ThemeData factory.
-//
-// Design rules enforced here:
-//   1. Flat, no elevation (elevation: 0 everywhere).
-//   2. 1px solid borders — no fuzzy drop-shadows.
-//   3. Monospace font (JetBrains Mono) for all numeric/data displays.
-//   4. Sans-serif font (Inter) for all UI text.
-//   5. Max border-radius: 4px (sharp corners for instrument aesthetic).
-//   6. Default: Light Mode. OLED Dark Mode available.
+// DetaHub's calm, device-first presentation system.
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,10 +8,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Modular border radius definitions from Idea/Style.md Section 5.
-const kRadiusCard = 10.0;
-const kRadiusChip = 4.0;
-const kRadiusModal = 16.0;
-const kRadiusButton = 6.0;
+const kRadiusCard = 22.0;
+const kRadiusChip = 14.0;
+const kRadiusModal = 28.0;
+const kRadiusButton = 16.0;
 
 /// Standard 1px border width for all interactive components (Style.md 5).
 const kBorderWidth = 1.0;
@@ -35,44 +27,65 @@ abstract final class AppTheme {
     return GoogleFonts.interTextTheme(
       TextTheme(
         // Display styles — section headers, screen titles
-        displayLarge:
-            TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: primaryColor),
-        displayMedium:
-            TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: primaryColor),
-        displaySmall:
-            TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: primaryColor),
+        displayLarge: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w700,
+            color: primaryColor,
+            letterSpacing: -1.2),
+        displayMedium: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            color: primaryColor,
+            letterSpacing: -0.8),
+        displaySmall: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.w600,
+            color: primaryColor,
+            letterSpacing: -0.6),
 
         // Section Title: 18px · Bold · Sans-Serif · Tracking -0.02em (Style.md 3)
-        headlineLarge:
-            TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: primaryColor),
-        headlineMedium:
-            TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: primaryColor, letterSpacing: -0.36),
-        headlineSmall:
-            TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: primaryColor),
+        headlineLarge: TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+            color: primaryColor,
+            letterSpacing: -0.4),
+        headlineMedium: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: primaryColor,
+            letterSpacing: -0.36),
+        headlineSmall: TextStyle(
+            fontSize: 16, fontWeight: FontWeight.w600, color: primaryColor),
 
         // Card Header: 14px · Medium · Sans-Serif (Style.md 3)
-        titleLarge:
-            TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: primaryColor),
-        titleMedium:
-            TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: primaryColor),
-        titleSmall:
-            TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: primaryColor),
+        titleLarge: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w600,
+            color: primaryColor,
+            letterSpacing: -0.2),
+        titleMedium: TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w500, color: primaryColor),
+        titleSmall: TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w500, color: primaryColor),
 
         // Body styles — general content text
-        bodyLarge:
-            TextStyle(fontSize: 15, fontWeight: FontWeight.w400, color: primaryColor),
-        bodyMedium:
-            TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: primaryColor),
-        bodySmall:
-            TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: secondaryColor),
+        bodyLarge: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            color: primaryColor,
+            height: 1.4),
+        bodyMedium: TextStyle(
+            fontSize: 14, fontWeight: FontWeight.w400, color: primaryColor),
+        bodySmall: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w400, color: secondaryColor),
 
         // Label styles — chips, captions, form labels
-        labelLarge:
-            TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: primaryColor),
-        labelMedium:
-            TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: secondaryColor),
-        labelSmall:
-            TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: secondaryColor),
+        labelLarge: TextStyle(
+            fontSize: 13, fontWeight: FontWeight.w500, color: primaryColor),
+        labelMedium: TextStyle(
+            fontSize: 12, fontWeight: FontWeight.w400, color: secondaryColor),
+        labelSmall: TextStyle(
+            fontSize: 11, fontWeight: FontWeight.w400, color: secondaryColor),
       ),
     );
   }
@@ -125,7 +138,7 @@ abstract final class AppTheme {
       textTheme: textTheme,
       primaryTextTheme: textTheme,
 
-      // --- AppBar ---
+      // Screens build their own headers; these defaults support secondary views.
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surface,
         foregroundColor: AppColors.textPrimary,
@@ -137,12 +150,9 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
         ),
-        shape: const Border(
-          bottom: BorderSide(color: AppColors.border, width: kBorderWidth),
-        ),
+        shape: const Border(),
       ),
 
-      // --- Cards (Style.md 5: 10px radius, 1px border) ---
       cardTheme: const CardThemeData(
         elevation: 0,
         margin: EdgeInsets.zero,
@@ -201,29 +211,28 @@ abstract final class AppTheme {
             borderRadius: BorderRadius.circular(kRadiusButton),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w600),
+          textStyle:
+              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           elevation: 0,
           foregroundColor: AppColors.textPrimary,
-          side: const BorderSide(
-              color: AppColors.border, width: kBorderWidth),
+          side: const BorderSide(color: AppColors.border, width: kBorderWidth),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(kRadiusButton),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w600),
+          textStyle:
+              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
-          textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w500),
+          textStyle:
+              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(kRadiusButton),
           ),
@@ -251,8 +260,7 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kRadiusCard),
-          side:
-              const BorderSide(color: AppColors.border, width: kBorderWidth),
+          side: const BorderSide(color: AppColors.border, width: kBorderWidth),
         ),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 16,
@@ -265,16 +273,14 @@ abstract final class AppTheme {
         ),
       ),
 
-      // --- Chip (Style.md 5: 4px radius) ---
       chipTheme: ChipThemeData(
         elevation: 0,
         backgroundColor: AppColors.surfaceVariant,
-        side:
-            const BorderSide(color: AppColors.border, width: kBorderWidth),
+        side: const BorderSide(color: AppColors.border, width: kBorderWidth),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(kRadiusChip),
-        ),
-        labelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+            borderRadius: BorderRadius.circular(kRadiusChip)),
+        labelStyle:
+            GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
       ),
 
       // --- Bottom Sheet (Style.md 5: 16px top corners) ---
@@ -283,7 +289,8 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusModal)),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(kRadiusModal)),
           side: BorderSide(color: AppColors.border, width: kBorderWidth),
         ),
       ),
@@ -302,8 +309,8 @@ abstract final class AppTheme {
   // ─────────────────────────────────────────────────────────────────────────
 
   static ThemeData get dark {
-    final textTheme = _buildTextTheme(
-        AppColors.textPrimaryDark, AppColors.textSecondaryDark);
+    final textTheme =
+        _buildTextTheme(AppColors.textPrimaryDark, AppColors.textSecondaryDark);
 
     return ThemeData(
       useMaterial3: true,
@@ -337,10 +344,7 @@ abstract final class AppTheme {
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimaryDark,
         ),
-        shape: const Border(
-          bottom:
-              BorderSide(color: AppColors.borderDark, width: kBorderWidth),
-        ),
+        shape: const Border(),
       ),
 
       // --- Cards (Style.md 5: 10px radius, 1px border) ---
@@ -381,7 +385,8 @@ abstract final class AppTheme {
           borderSide:
               const BorderSide(color: AppColors.aqiPoor, width: kBorderWidth),
         ),
-        hintStyle: const TextStyle(color: AppColors.textMutedDark, fontSize: 14),
+        hintStyle:
+            const TextStyle(color: AppColors.textMutedDark, fontSize: 14),
         labelStyle: const TextStyle(
           color: AppColors.textSecondaryDark,
           fontSize: 13,
@@ -399,8 +404,8 @@ abstract final class AppTheme {
             borderRadius: BorderRadius.circular(kRadiusButton),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w600),
+          textStyle:
+              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
@@ -413,15 +418,15 @@ abstract final class AppTheme {
             borderRadius: BorderRadius.circular(kRadiusButton),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w600),
+          textStyle:
+              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: AppColors.textPrimaryDark,
-          textStyle: GoogleFonts.inter(
-              fontSize: 13, fontWeight: FontWeight.w500),
+          textStyle:
+              GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(kRadiusButton),
           ),
@@ -467,12 +472,13 @@ abstract final class AppTheme {
       chipTheme: ChipThemeData(
         elevation: 0,
         backgroundColor: AppColors.surfaceVariantDark,
-        side: const BorderSide(
-            color: AppColors.borderDark, width: kBorderWidth),
+        side:
+            const BorderSide(color: AppColors.borderDark, width: kBorderWidth),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(kRadiusChip),
         ),
-        labelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
+        labelStyle:
+            GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500),
       ),
 
       // --- Bottom Sheet (Style.md 5: 16px top corners) ---
@@ -481,7 +487,8 @@ abstract final class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusModal)),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(kRadiusModal)),
           side: BorderSide(color: AppColors.borderDark, width: kBorderWidth),
         ),
       ),

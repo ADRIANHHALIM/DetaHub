@@ -45,7 +45,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   }
 
   Future<void> _pollLive() async {
-    final deviceAsync = ref.read(watchDeviceWithLocationProvider(widget.deviceId));
+    final deviceAsync =
+        ref.read(watchDeviceWithLocationProvider(widget.deviceId));
     final deviceWithLoc = deviceAsync.value;
     if (deviceWithLoc == null) return;
 
@@ -75,13 +76,16 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final deviceAsync = ref.watch(watchDeviceWithLocationProvider(widget.deviceId));
+    final deviceAsync =
+        ref.watch(watchDeviceWithLocationProvider(widget.deviceId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
     final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final surfaceVariant = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final surfaceVariant =
+        isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
+    final textSecondary =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
 
     return deviceAsync.when(
@@ -147,7 +151,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                   ),
                   const PopupMenuItem(
                     value: 'delete',
-                    child: Text('Remove Device', style: TextStyle(color: AppColors.aqiPoor)),
+                    child: Text('Remove Device',
+                        style: TextStyle(color: AppColors.aqiPoor)),
                   ),
                 ],
               ),
@@ -159,7 +164,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
             children: [
               // Location Context Bar
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: surfaceVariant,
                   borderRadius: BorderRadius.circular(kRadiusCard),
@@ -167,7 +173,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.place_outlined, size: 18, color: AppColors.textSecondary),
+                    const Icon(Icons.place_outlined,
+                        size: 18, color: AppColors.textSecondary),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -198,13 +205,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          'AIR QUALITY',
-                          style: AppTheme.monoStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: textSecondary,
-                            letterSpacing: 0.6,
-                          ),
+                          'Air quality',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
                         AqiBadge(aqi: aqiValue),
                       ],
@@ -224,12 +226,11 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'INDEX',
-                          style: AppTheme.monoStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: textMuted,
-                          ),
+                          AppColors.labelForAqi(aqiValue),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(color: textMuted),
                         ),
                       ],
                     ),
@@ -247,15 +248,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
               const SizedBox(height: 16),
 
               // Environmental Telemetry Grid (Neutral by default)
-              Text(
-                'ENVIRONMENTAL READINGS',
-                style: AppTheme.monoStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: textSecondary,
-                  letterSpacing: 0.6,
-                ),
-              ),
+              Text('Current readings',
+                  style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 8),
 
               Row(
@@ -263,7 +257,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                   Expanded(
                     child: MetricCard(
                       label: 'Temperature',
-                      value: _liveData?.temperature?.toStringAsFixed(1) ?? '24.8',
+                      value:
+                          _liveData?.temperature?.toStringAsFixed(1) ?? '24.8',
                       unit: '°C',
                     ),
                   ),
@@ -300,16 +295,9 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
               const SizedBox(height: 24),
 
-              // Device Details
-              Text(
-                'DEVICE INFORMATION',
-                style: AppTheme.monoStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: textSecondary,
-                  letterSpacing: 0.6,
-                ),
-              ),
+              // Technical details stay out of the primary data story.
+              Text('About this device',
+                  style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 8),
 
               Container(
@@ -319,15 +307,26 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                   borderRadius: BorderRadius.circular(kRadiusCard),
                   border: Border.all(color: borderColor, width: 1),
                 ),
-                child: Column(
+                child: ExpansionTile(
+                  tilePadding: EdgeInsets.zero,
+                  title: Text('Technical details',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  subtitle: Text('Device ID, local address, and storage',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: textSecondary)),
                   children: [
+                    const Divider(height: 1),
+                    const SizedBox(height: 12),
                     _detailRow('Model', device.productType, context),
                     const Divider(height: 16),
                     _detailRow('Identifier', device.id, context),
                     const Divider(height: 16),
-                    _detailRow('Network Address', device.baseUrl, context),
+                    _detailRow('Local address', device.baseUrl, context),
                     const Divider(height: 16),
-                    _detailRow('Storage', 'Local SQLite (Drift)', context),
+                    _detailRow('Storage', 'Stored locally', context),
+                    const SizedBox(height: 4),
                   ],
                 ),
               ),
@@ -343,7 +342,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, size: 16, color: AppColors.aqiPoor),
+                      const Icon(Icons.info_outline,
+                          size: 16, color: AppColors.aqiPoor),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -373,15 +373,22 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textSecondary)),
-        Text(value, style: AppTheme.monoStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: textSecondary)),
+        Text(value,
+            style:
+                AppTheme.monoStyle(fontSize: 12, fontWeight: FontWeight.w500)),
       ],
     );
   }
 
   String _aqiDescription(int aqi) => switch (aqi) {
         1 => 'Air quality is satisfactory. Little or no risk of pollution.',
-        2 => 'Air quality is acceptable. Moderate health concern for very sensitive people.',
+        2 =>
+          'Air quality is acceptable. Moderate health concern for very sensitive people.',
         3 => 'Members of sensitive groups may experience health effects.',
         4 => 'Everyone may begin to experience health effects.',
         5 => 'Health alert: risk of more serious health effects for everyone.',
@@ -400,7 +407,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
           decoration: const InputDecoration(labelText: 'Device Name'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Save'),
@@ -422,12 +430,16 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Remove Device'),
-        content: Text('Remove "${device.name}"? Telemetry records will be permanently removed.'),
+        content: Text(
+            'Remove "${device.name}"? Telemetry records will be permanently removed.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove', style: TextStyle(color: AppColors.aqiPoor)),
+            child: const Text('Remove',
+                style: TextStyle(color: AppColors.aqiPoor)),
           ),
         ],
       ),

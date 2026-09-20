@@ -29,19 +29,20 @@ class AqiBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AppColors.forAqi(aqi);
-    final label = compact ? 'AQI $aqi' : 'AQI $aqi · ${AppColors.labelForAqi(aqi).toUpperCase()}';
+    final label = compact ? 'AQI $aqi' : AppColors.labelForAqi(aqi);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color, width: 1),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         label,
-        style: AppTheme.monoStyle(fontSize: 10, fontWeight: FontWeight.w600)
-            .copyWith(color: color, letterSpacing: 0.3),
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: color, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -68,9 +69,11 @@ class AqiHero extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          AppColors.labelForAqi(aqi).toUpperCase(),
-          style: AppTheme.monoStyle(fontSize: 11, fontWeight: FontWeight.w500)
-              .copyWith(color: color, letterSpacing: 1.5),
+          AppColors.labelForAqi(aqi),
+          style: Theme.of(context)
+              .textTheme
+              .labelMedium
+              ?.copyWith(color: color, fontWeight: FontWeight.w700),
         ),
       ],
     );
