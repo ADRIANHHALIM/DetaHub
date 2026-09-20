@@ -14,6 +14,11 @@ import '../../../core/network/providers/network_providers.dart';
 // Read providers
 // ---------------------------------------------------------------------------
 
+/// Reactive list of all devices across all sub-sectors.
+final watchAllDevicesProvider = StreamProvider<List<Device>>((ref) {
+  return ref.watch(deviceDaoProvider).watchAllDevices();
+});
+
 /// Reactive list of devices within a given Sub-Sector.
 final watchDevicesProvider =
     StreamProvider.family<List<Device>, int>((ref, subSectorId) {
