@@ -41,20 +41,36 @@ class LiveTelemetry {
   /// Timestamp is parsed from ISO-8601 string; falls back to [DateTime.now]
   /// if the field is absent (should not happen in production firmware).
   factory LiveTelemetry.fromJson(Map<String, dynamic> json) {
-    final tsRaw = json['timestamp'];
+    final tsRaw = json['timestamp'] ?? json['ntp_time'] ?? json['ntpTime'];
     final timestamp = tsRaw is String
         ? DateTime.tryParse(tsRaw) ?? DateTime.now()
         : DateTime.now();
 
     return LiveTelemetry(
       timestamp: timestamp,
-      temperature: (json['temperature'] as num?)?.toDouble(),
-      humidity: (json['humidity'] as num?)?.toDouble(),
-      eco2: json['eco2'] as int?,
-      tvoc: json['tvoc'] as int?,
-      aqi: json['aqi'] as int?,
+      temperature: _double(json, ['temperature', 'temp']),
+      humidity: _double(json, ['humidity', 'hum']),
+      eco2: _int(json, ['eco2', 'eCO2']),
+      tvoc: _int(json, ['tvoc', 'TVOC']),
+      aqi: _int(json, ['aqi', 'AQI']),
       uptime: json['uptime'] as int?,
     );
+  }
+
+  static double? _double(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toDouble();
+    }
+    return null;
+  }
+
+  static int? _int(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is num) return value.toInt();
+    }
+    return null;
   }
 
   @override
