@@ -369,11 +369,10 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                       label: 'Temperature',
                       value: _tempHistory.isNotEmpty
                           ? _tempHistory.last.toStringAsFixed(1)
-                          : (_liveData?.temperature?.toStringAsFixed(1) ??
-                              '24.8'),
+                          : (_liveData?.temperature?.toStringAsFixed(1) ?? '--'),
                       unit: '°C',
                       history: _tempHistory,
-                      chartColor: AppColors.metricTemperature,
+                      chartColor: isDark ? AppColors.accentDark : AppColors.accent,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -382,11 +381,10 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                       label: 'Humidity',
                       value: _humidityHistory.isNotEmpty
                           ? _humidityHistory.last.toStringAsFixed(1)
-                          : (_liveData?.humidity?.toStringAsFixed(1) ??
-                              '58.2'),
+                          : (_liveData?.humidity?.toStringAsFixed(1) ?? '--'),
                       unit: '%',
                       history: _humidityHistory,
-                      chartColor: AppColors.metricHumidity,
+                      chartColor: isDark ? AppColors.accentDark : AppColors.accent,
                     ),
                   ),
                 ],
@@ -399,10 +397,10 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                       label: 'eCO₂',
                       value: _eco2History.isNotEmpty
                           ? '${_eco2History.last.round()}'
-                          : '${_liveData?.eco2 ?? 480}',
+                          : '${_liveData?.eco2 ?? '--'}',
                       unit: 'PPM',
                       history: _eco2History,
-                      chartColor: AppColors.metricEco2,
+                      chartColor: isDark ? AppColors.accentDark : AppColors.accent,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -411,10 +409,10 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                       label: 'TVOC',
                       value: _tvocHistory.isNotEmpty
                           ? '${_tvocHistory.last.round()}'
-                          : '${_liveData?.tvoc ?? 115}',
+                          : '${_liveData?.tvoc ?? '--'}',
                       unit: 'PPB',
                       history: _tvocHistory,
-                      chartColor: AppColors.metricTvoc,
+                      chartColor: isDark ? AppColors.accentDark : AppColors.accent,
                     ),
                   ),
                 ],
