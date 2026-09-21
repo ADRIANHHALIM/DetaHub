@@ -135,7 +135,7 @@ class MetricCard extends StatelessWidget {
                 height: 26,
                 width: double.infinity,
                 child: CustomPaint(
-                  painter: _PerSecondGraphPainter(
+                  painter: _LiveTrendGraphPainter(
                     data: history!,
                     color: graphColor,
                   ),
@@ -163,13 +163,13 @@ class MetricCard extends StatelessWidget {
   }
 }
 
-/// CustomPainter for received telemetry data.
-/// Renders a smooth cubic Bezier curve, area gradient fill, and live pulse dot.
-class _PerSecondGraphPainter extends CustomPainter {
+/// CustomPainter for real received telemetry data.
+/// Renders a smooth cubic Bezier curve, area gradient fill, and latest point marker.
+class _LiveTrendGraphPainter extends CustomPainter {
   final List<double> data;
   final Color color;
 
-  _PerSecondGraphPainter({
+  _LiveTrendGraphPainter({
     required this.data,
     required this.color,
   });
@@ -253,7 +253,7 @@ class _PerSecondGraphPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, strokePaint);
 
-    // Pulse dot at current second (far right)
+    // Pulse dot at latest reading (far right)
     final lastPoint = points.last;
     final dotPaint = Paint()..color = color;
     canvas.drawCircle(lastPoint, 2.2, dotPaint);
@@ -266,7 +266,7 @@ class _PerSecondGraphPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _PerSecondGraphPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _LiveTrendGraphPainter oldDelegate) => true;
 }
 
 /// A compact variant of [MetricCard] for list rows and summary strips.

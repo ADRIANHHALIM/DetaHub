@@ -88,14 +88,15 @@ class _DeviceFormScreenState extends ConsumerState<DeviceFormScreen> {
   }
 
   String _errorMessage(NetworkError error) => switch (error) {
-        TimeoutError() =>
-          'No response within 5s. Check the device URL and Wi-Fi network.',
+        TimeoutError() ||
         UnreachableError() =>
-          'Cannot reach device. Verify the IP address and that the device is powered on.',
+          'Device tidak dapat dihubungi. Pastikan ponsel dan perangkat berada di jaringan Wi-Fi yang sama.',
         NotFoundError() =>
-          'Device data was not found. Check the local address and Wi-Fi network.',
-        ParseError(:final detail) => 'Unexpected response format: $detail',
-        UnknownNetworkError(:final cause) => 'Error: $cause',
+          'Endpoint data perangkat tidak ditemukan. Periksa kembali alamat lokal perangkat.',
+        ParseError() =>
+          'Data dari perangkat tidak dapat dibaca. Format respons tidak sesuai.',
+        UnknownNetworkError() =>
+          'Koneksi ke perangkat gagal. Silakan periksa jaringan Wi-Fi dan coba lagi.',
       };
 
   // ---------------------------------------------------------------------------

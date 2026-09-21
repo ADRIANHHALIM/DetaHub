@@ -46,6 +46,54 @@ void main() {
         throwsFormatException,
       );
     });
+
+    test('parses epoch seconds and epoch milliseconds', () {
+      final t1 = LiveTelemetry.fromJson({
+        'timestamp': 1774137600, // 2026-03-22
+        'temp': 24.5,
+      });
+      expect(t1.hasHardwareTimestamp, isTrue);
+      expect(t1.timestamp.year, 2026);
+
+      final t2 = LiveTelemetry.fromJson({
+        'timestamp': '1774137600000', // string millis
+        'temp': 24.5,
+      });
+      expect(t2.hasHardwareTimestamp, isTrue);
+      expect(t2.timestamp.year, 2026);
+    });
+
+    test('treats 0 or pre-2020 timestamp as unsynced NTP and uses receivedAt',
+        () {
+      final receivedAt = DateTime.utc(2026, 9, 21, 22, 0);
+      final t1 = LiveTelemetry.fromJson(
+        {'timestamp': 0, 'temp': 24.5},
+        receivedAt: receivedAt,
+      );
+      expect(t1.hasHardwareTimestamp, isFalse);
+      expect(t1.timestamp, receivedAt);
+
+      final t2 = LiveTelemetry.fromJson(
+        {'ntp_time': '0', 'temp': 24.5},
+        receivedAt: receivedAt,
+      );
+      expect(t2.hasHardwareTimestamp, isFalse);
+      expect(t2.timestamp, receivedAt);
+    });
+
+    test(
+        'strictly preserves nulls for missing values and never fabricates defaults',
+        () {
+      final t = LiveTelemetry.fromJson(const {});
+      expect(t.temperature, isNull);
+      expect(t.humidity, isNull);
+      expect(t.eco2, isNull);
+      expect(t.tvoc, isNull);
+      expect(t.aqi, isNull);
+      expect(t.totalRecords, isNull);
+      expect(t.fileName, isNull);
+      expect(t.uptime, isNull);
+    });
   });
 
   test('manifest fallback derives a deterministic address identity', () {
@@ -62,5 +110,19 @@ void main() {
 
     expect(manifest.deviceId, 'lat-192-168-4-1');
     expect(manifest.metrics, ['temperature']);
+  });
+
+  test('manifest fallback derives deterministic identity with custom port', () {
+    final telemetry = LiveTelemetry(
+      timestamp: DateTime.utc(2026),
+      hasHardwareTimestamp: true,
+    );
+
+    final manifest = DeviceManifest.fromLiveTelemetry(
+      telemetry,
+      'http://192.168.1.100:8080/data',
+    );
+
+    expect(manifest.deviceId, 'lat-192-168-1-100-8080');
   });
 }

@@ -25,7 +25,6 @@ class SubSectors extends Table {
       .references(Sectors, #id, onDelete: KeyAction.cascade)();
 
   /// ISO-8601 timestamp of local creation.
-  DateTimeColumn get createdAt => dateTime()
-      .withDefault(currentDateAndTime)
-      .named('created_at')();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(currentDateAndTime).named('created_at')();
 }

@@ -47,8 +47,7 @@ void main() {
 
       expect(subId, isPositive);
 
-      final subs =
-          await db.sectorDao.watchSubSectorsForSector(sectorId).first;
+      final subs = await db.sectorDao.watchSubSectorsForSector(sectorId).first;
       expect(subs.length, 1);
       expect(subs.first.name, 'Lantai 1');
       expect(subs.first.sectorId, sectorId);
@@ -72,12 +71,12 @@ void main() {
       final sectors = await db.sectorDao.watchAllSectors().first;
       expect(sectors, isEmpty);
 
-      final subs =
-          await db.sectorDao.watchSubSectorsForSector(sectorId).first;
+      final subs = await db.sectorDao.watchSubSectorsForSector(sectorId).first;
       expect(subs, isEmpty);
     });
 
-    test('watchFullHierarchy aggregates sectors and sub-sectors with device counts',
+    test(
+        'watchFullHierarchy aggregates sectors and sub-sectors with device counts',
         () async {
       final sectorId = await db.sectorDao.insertSector(
         const SectorsCompanion(name: Value('Pabrik')),
@@ -105,7 +104,8 @@ void main() {
       expect(hierarchy.length, 1);
       expect(hierarchy.first.sector.name, 'Pabrik');
       expect(hierarchy.first.subSectors.length, 1);
-      expect(hierarchy.first.subSectors.first.subSector.name, 'Line Produksi 1');
+      expect(
+          hierarchy.first.subSectors.first.subSector.name, 'Line Produksi 1');
       expect(hierarchy.first.subSectors.first.deviceCount, 1);
     });
   });

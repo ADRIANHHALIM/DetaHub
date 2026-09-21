@@ -25,7 +25,8 @@ class LocationsScreen extends ConsumerWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
     final surfaceColor = isDark ? AppColors.surfaceDark : AppColors.surface;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final textSecondary =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
 
     return Scaffold(
@@ -73,7 +74,10 @@ class LocationsScreen extends ConsumerWidget {
                     Text(
                       'Organize your devices by campus, office, building, or room.',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textSecondary),
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(color: textSecondary),
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton.icon(
@@ -100,11 +104,14 @@ class LocationsScreen extends ConsumerWidget {
                   border: Border.all(color: borderColor, width: 1),
                 ),
                 child: Theme(
-                  data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                  data: Theme.of(context)
+                      .copyWith(dividerColor: Colors.transparent),
                   child: ExpansionTile(
                     initiallyExpanded: true,
-                    tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    leading: const Icon(Icons.apartment_outlined, size: 20, color: AppColors.textPrimary),
+                    tilePadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: const Icon(Icons.apartment_outlined,
+                        size: 20, color: AppColors.textPrimary),
                     title: Text(
                       item.sector.name,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -113,7 +120,8 @@ class LocationsScreen extends ConsumerWidget {
                     ),
                     subtitle: Text(
                       '${item.subSectors.length} area${item.subSectors.length == 1 ? '' : 's'}',
-                      style: AppTheme.monoStyle(fontSize: 11, color: textSecondary),
+                      style: AppTheme.monoStyle(
+                          fontSize: 11, color: textSecondary),
                     ),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -121,12 +129,15 @@ class LocationsScreen extends ConsumerWidget {
                         IconButton(
                           icon: Icon(Icons.add, size: 18, color: textSecondary),
                           tooltip: 'Add Area',
-                          onPressed: () => _promptAddArea(context, ref, item.sector.id),
+                          onPressed: () =>
+                              _promptAddArea(context, ref, item.sector.id),
                         ),
                         IconButton(
-                          icon: Icon(Icons.delete_outline, size: 18, color: textSecondary),
+                          icon: Icon(Icons.delete_outline,
+                              size: 18, color: textSecondary),
                           tooltip: 'Delete Location',
-                          onPressed: () => _confirmDeleteLocation(context, ref, item.sector.id, item.sector.name),
+                          onPressed: () => _confirmDeleteLocation(
+                              context, ref, item.sector.id, item.sector.name),
                         ),
                       ],
                     ),
@@ -137,11 +148,15 @@ class LocationsScreen extends ConsumerWidget {
                           padding: const EdgeInsets.all(16),
                           child: Text(
                             'No areas added yet. Tap + to add an area (e.g. Lab IoT, Server Room).',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: textMuted),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: textMuted),
                           ),
                         )
                       else
-                        ...item.subSectors.map((ss) => _AreaCard(subSector: ss)),
+                        ...item.subSectors
+                            .map((ss) => _AreaCard(subSector: ss)),
                     ],
                   ),
                 ),
@@ -162,10 +177,12 @@ class LocationsScreen extends ConsumerWidget {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'e.g. Universitas Trisakti, Head Office'),
+          decoration: const InputDecoration(
+              hintText: 'e.g. Universitas Trisakti, Head Office'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Add'),
@@ -179,7 +196,8 @@ class LocationsScreen extends ConsumerWidget {
     }
   }
 
-  Future<void> _promptAddArea(BuildContext context, WidgetRef ref, int sectorId) async {
+  Future<void> _promptAddArea(
+      BuildContext context, WidgetRef ref, int sectorId) async {
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
@@ -188,10 +206,12 @@ class LocationsScreen extends ConsumerWidget {
         content: TextField(
           controller: controller,
           autofocus: true,
-          decoration: const InputDecoration(hintText: 'e.g. Lab IoT, Ruang Server, Lt. 3'),
+          decoration: const InputDecoration(
+              hintText: 'e.g. Lab IoT, Ruang Server, Lt. 3'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
             child: const Text('Add'),
@@ -201,21 +221,28 @@ class LocationsScreen extends ConsumerWidget {
     );
 
     if (name != null && name.isNotEmpty) {
-      await ref.read(subSectorMutationProvider.notifier).addSubSector(sectorId, name);
+      await ref
+          .read(subSectorMutationProvider.notifier)
+          .addSubSector(sectorId, name);
     }
   }
 
-  Future<void> _confirmDeleteLocation(BuildContext context, WidgetRef ref, int sectorId, String name) async {
+  Future<void> _confirmDeleteLocation(
+      BuildContext context, WidgetRef ref, int sectorId, String name) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Location'),
-        content: Text('Delete "$name"? All areas and device associations will be removed.'),
+        content: Text(
+            'Delete "$name"? All areas and device associations will be removed.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: AppColors.aqiPoor)),
+            child: const Text('Delete',
+                style: TextStyle(color: AppColors.aqiPoor)),
           ),
         ],
       ),
@@ -237,24 +264,29 @@ class _AreaCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final devicesAsync = ref.watch(watchDevicesProvider(subSector.subSector.id));
+    final devicesAsync =
+        ref.watch(watchDevicesProvider(subSector.subSector.id));
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surfaceVariant = isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
-    final textSecondary = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final surfaceVariant =
+        isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant;
+    final textSecondary =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final textMuted = isDark ? AppColors.textMutedDark : AppColors.textMuted;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: surfaceVariant.withValues(alpha: 0.5),
-        border: Border(top: BorderSide(color: Theme.of(context).dividerColor, width: 1)),
+        border: Border(
+            top: BorderSide(color: Theme.of(context).dividerColor, width: 1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Icon(Icons.meeting_room_outlined, size: 16, color: AppColors.textSecondary),
+              const Icon(Icons.meeting_room_outlined,
+                  size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -288,11 +320,17 @@ class _AreaCard extends ConsumerWidget {
 
               return Column(
                 children: devices.map((d) {
+                  final isRecentlySeen = d.lastSeenAt != null &&
+                      DateTime.now().difference(d.lastSeenAt!).inSeconds < 15;
+                  final status = d.lastSeenAt == null
+                      ? ConnectionStatus.unknown
+                      : (isRecentlySeen
+                          ? ConnectionStatus.online
+                          : ConnectionStatus.offline);
                   return InkWell(
                     onTap: () => context.push('/devices/${d.id}'),
-                    borderRadius: BorderRadius.circular(4),
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
+                      padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         children: [
                           Image.asset(
@@ -305,14 +343,18 @@ class _AreaCard extends ConsumerWidget {
                           Expanded(
                             child: Text(
                               d.name,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
                                     fontWeight: FontWeight.w500,
                                   ),
                             ),
                           ),
-                          const ConnectionPill(status: ConnectionStatus.online),
+                          ConnectionPill(status: status),
                           const SizedBox(width: 4),
-                          const Icon(Icons.chevron_right, size: 14, color: AppColors.textSecondary),
+                          const Icon(Icons.chevron_right,
+                              size: 14, color: AppColors.textSecondary),
                         ],
                       ),
                     ),

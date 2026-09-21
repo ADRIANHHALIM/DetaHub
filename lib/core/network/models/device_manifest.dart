@@ -57,12 +57,7 @@ class DeviceManifest {
     LiveTelemetry telemetry,
     String baseUrl,
   ) {
-    final uri = Uri.tryParse(baseUrl);
-    final address =
-        uri?.hasPort == true ? '${uri!.host}-${uri.port}' : uri?.host;
-    final stableAddress = (address == null || address.isEmpty)
-        ? baseUrl.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
-        : address.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-');
+    final stableAddress = deriveStableAddress(baseUrl);
     final metrics = <String>[
       if (telemetry.temperature != null) 'temperature',
       if (telemetry.humidity != null) 'humidity',
@@ -82,6 +77,22 @@ class DeviceManifest {
       metrics: metrics,
       uptime: telemetry.uptime,
     );
+  }
+
+  /// Derives a deterministic address slug from [baseUrl] for local identification.
+  static String deriveStableAddress(String baseUrl) {
+    var raw = baseUrl.trim();
+    raw = raw.replaceFirst(RegExp(r'^https?:\/\/'), '');
+    raw = raw.split('/').first; // extract host and port only
+    if (raw.endsWith(':80')) {
+      raw = raw.substring(0, raw.length - 3);
+    } else if (raw.endsWith(':443')) {
+      raw = raw.substring(0, raw.length - 4);
+    }
+    final sanitized = raw
+        .replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return sanitized.isNotEmpty ? sanitized : 'device';
   }
 
   @override

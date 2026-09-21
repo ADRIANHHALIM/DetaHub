@@ -370,19 +370,32 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                           width: 5,
                           height: 5,
                           decoration: BoxDecoration(
-                            color: _connectionStatus == ConnectionStatus.online
-                                ? AppColors.aqiGood
-                                : textMuted,
+                            color: switch (_connectionStatus) {
+                              ConnectionStatus.online => AppColors.aqiGood,
+                              ConnectionStatus.offline => AppColors.aqiPoor,
+                              ConnectionStatus.checking =>
+                                AppColors.aqiModerate,
+                              ConnectionStatus.unknown => textMuted,
+                            },
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          'Live · 3s poll',
+                          switch (_connectionStatus) {
+                            ConnectionStatus.online => 'Live · 3s poll',
+                            ConnectionStatus.offline => 'Offline · Last known',
+                            ConnectionStatus.checking => 'Checking…',
+                            ConnectionStatus.unknown => 'Unknown',
+                          },
                           style: AppTheme.monoStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
-                          ).copyWith(color: textSecondary),
+                          ).copyWith(
+                            color: _connectionStatus == ConnectionStatus.offline
+                                ? AppColors.aqiPoor
+                                : textSecondary,
+                          ),
                         ),
                       ],
                     ),
