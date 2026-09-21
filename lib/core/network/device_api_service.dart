@@ -1,10 +1,4 @@
 // lib/core/network/device_api_service.dart
-//
-// Service layer for communicating with a DetaLab IoT device's local HTTP API.
-//
-// All public methods return Result<T, NetworkError> — they never throw.
-// Dio exceptions are caught here and mapped to typed NetworkError subtypes,
-// keeping the feature layer clean of HTTP-specific error handling.
 
 import 'package:dio/dio.dart';
 
@@ -12,36 +6,43 @@ import 'network_error.dart';
 import 'models/device_manifest.dart';
 import 'models/live_telemetry.dart';
 
-/// Provides typed access to a DetaLab device's local HTTP endpoints.
+/// Local HTTP API client for DetaLab edge devices.
 ///
-/// The [baseUrl] is passed per-call (not stored) because each device
-/// has its own IP/URL and the service is shared across all devices.
+/// Current LAT firmware exposes /data for the live snapshot. The original
+/// /api/live contract is retained as a fallback for compatibility.
 class DeviceApiService {
   final Dio _dio;
 
   const DeviceApiService(this._dio);
 
-  // ---------------------------------------------------------------------------
-  // GET /api/manifest
-  // ---------------------------------------------------------------------------
-
-  /// Fetches device metadata, capabilities, and metric list.
-  ///
-  /// Used during device registration ("Test Connection") and on app startup
-  /// to verify that a previously registered device is still reachable.
   Future<Result<DeviceManifest, NetworkError>> fetchManifest(
       String baseUrl) async {
     try {
-      final response =
-          await _dio.get('$baseUrl/api/manifest');
-      final data = response.data;
-
-      if (data is! Map<String, dynamic>) {
-        return const Err(ParseError('Manifest response is not a JSON object'));
+      try {
+        final response = await _dio.get('$baseUrl/api/manifest');
+        final data = response.data;
+        if (data is! Map<String, dynamic>) {
+          return const Err(ParseError('Manifest response is not a JSON object'));
+        }
+        return Ok(DeviceManifest.fromJson(data));
+      } on DioException catch (e) {
+        if (e.response?.statusCode != 404) {
+          return Err(_mapDioError(e, baseUrl));
+        }
       }
 
-      final manifest = DeviceManifest.fromJson(data);
-      return Ok(manifest);
+      final response = await _dio.get('$baseUrl/data');
+      final data = response.data;
+      if (data is! Map<String, dynamic>) {
+        return const Err(ParseError('Device data response is not a JSON object'));
+      }
+
+      return Ok(
+        DeviceManifest.fromDataJson(
+          data,
+          fallbackDeviceId: _fallbackDeviceId(baseUrl),
+        ),
+      );
     } on DioException catch (e) {
       return Err(_mapDioError(e, baseUrl));
     } on FormatException catch (e) {
@@ -51,26 +52,27 @@ class DeviceApiService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // GET /api/live
-  // ---------------------------------------------------------------------------
-
-  /// Fetches the latest real-time telemetry snapshot from the device.
-  ///
-  /// Called on a periodic timer from the live dashboard (e.g., every 5s).
-  /// Returns the most recent sensor values — not a stream from the device.
+  /// /data is the primary endpoint for the current LAT test firmware.
+  /// /api/live remains supported for older firmware.
   Future<Result<LiveTelemetry, NetworkError>> fetchLive(
       String baseUrl) async {
     try {
-      final response = await _dio.get('$baseUrl/api/live');
-      final data = response.data;
+      Response<dynamic> response;
+      try {
+        response = await _dio.get('$baseUrl/data');
+      } on DioException catch (e) {
+        if (e.response?.statusCode != 404) {
+          return Err(_mapDioError(e, baseUrl));
+        }
+        response = await _dio.get('$baseUrl/api/live');
+      }
 
+      final data = response.data;
       if (data is! Map<String, dynamic>) {
         return const Err(ParseError('Live response is not a JSON object'));
       }
 
-      final telemetry = LiveTelemetry.fromJson(data);
-      return Ok(telemetry);
+      return Ok(LiveTelemetry.fromJson(data));
     } on DioException catch (e) {
       return Err(_mapDioError(e, baseUrl));
     } on FormatException catch (e) {
@@ -80,25 +82,25 @@ class DeviceApiService {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal — Dio exception → NetworkError mapping
-  // ---------------------------------------------------------------------------
+  String _fallbackDeviceId(String baseUrl) {
+    final uri = Uri.tryParse(baseUrl);
+    final host = uri?.host;
+    if (host == null || host.isEmpty) {
+      return 'lat-local';
+    }
+    return 'lat-' + host.replaceAll('.', '-');
+  }
 
-  /// Maps a [DioException] to the appropriate [NetworkError] subtype.
   NetworkError _mapDioError(DioException e, String url) {
     return switch (e.type) {
       DioExceptionType.connectionTimeout ||
       DioExceptionType.sendTimeout ||
       DioExceptionType.receiveTimeout =>
         const TimeoutError(),
-
-      DioExceptionType.connectionError =>
-        UnreachableError(url),
-
+      DioExceptionType.connectionError => UnreachableError(url),
       DioExceptionType.badResponse => e.response?.statusCode == 404
           ? NotFoundError(url)
           : UnknownNetworkError(e),
-
       _ => UnknownNetworkError(e),
     };
   }
