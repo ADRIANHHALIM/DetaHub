@@ -138,19 +138,20 @@ abstract final class AppTheme {
       textTheme: textTheme,
       primaryTextTheme: textTheme,
 
-      // Screens build their own headers; these defaults support secondary views.
+      // Screens build their own headers; these defaults support secondary views without background boxiness.
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surface,
+        backgroundColor: Colors.transparent,
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         titleTextStyle: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
           color: AppColors.textPrimary,
+          letterSpacing: -0.3,
         ),
-        shape: const Border(),
       ),
 
       cardTheme: const CardThemeData(
@@ -332,19 +333,20 @@ abstract final class AppTheme {
       textTheme: textTheme,
       primaryTextTheme: textTheme,
 
-      // --- AppBar ---
+      // --- AppBar (Transparent header, seamlessly matching canvas) ---
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.surfaceDark,
+        backgroundColor: Colors.transparent,
         foregroundColor: AppColors.textPrimaryDark,
         elevation: 0,
         scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         centerTitle: false,
         titleTextStyle: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
           color: AppColors.textPrimaryDark,
+          letterSpacing: -0.3,
         ),
-        shape: const Border(),
       ),
 
       // --- Cards (Style.md 5: 10px radius, 1px border) ---

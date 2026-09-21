@@ -269,14 +269,18 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
             child: Row(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
+                  width: 52,
+                  height: 52,
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: surfaceVariant,
                     borderRadius: BorderRadius.circular(kRadiusChip),
                     border: Border.all(color: borderColor, width: 1),
                   ),
-                  child: const Icon(Icons.air, size: 24),
+                  child: Image.asset(
+                    'assets/images/LAT.webp',
+                    fit: BoxFit.contain,
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

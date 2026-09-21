@@ -46,21 +46,20 @@ class ProductsScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
-                        height: 176,
+                        height: 190,
                         width: double.infinity,
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                             color: dark
                                 ? AppColors.surfaceVariantDark
                                 : AppColors.accentSoft,
                             borderRadius: BorderRadius.circular(18)),
                         child: Center(
-                            child: SizedBox(
-                                width: 104,
-                                height: 126,
-                                child: CustomPaint(
-                                    painter: _ProductIllustration(dark
-                                        ? AppColors.textPrimaryDark
-                                        : AppColors.textPrimary)))),
+                          child: Image.asset(
+                            'assets/images/LAT.webp',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 24),
                       Text('Lightweight Air Tester',
@@ -91,29 +90,4 @@ class ProductsScreen extends StatelessWidget {
       ),
     );
   }
-}
-
-class _ProductIllustration extends CustomPainter {
-  final Color color;
-  _ProductIllustration(this.color);
-  @override
-  void paint(Canvas canvas, Size size) {
-    final outline = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final fill = Paint()..color = color.withValues(alpha: .08);
-    final device = RRect.fromRectAndRadius(
-        Rect.fromLTWH(20, 6, size.width - 40, size.height - 12),
-        const Radius.circular(21));
-    canvas.drawRRect(device, fill);
-    canvas.drawRRect(device, outline);
-    canvas.drawCircle(Offset(size.width / 2, 44), 10, outline);
-    canvas.drawLine(const Offset(36, 82), Offset(size.width - 36, 82), outline);
-    canvas.drawLine(
-        const Offset(36, 96), Offset(size.width * .63, 96), outline);
-  }
-
-  @override
-  bool shouldRepaint(_ProductIllustration old) => old.color != color;
 }
