@@ -32,51 +32,85 @@ class ProductsScreen extends StatelessWidget {
                     ?.copyWith(color: secondary)),
             const SizedBox(height: 28),
             Container(
-              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                  color: dark
-                      ? AppColors.surfaceVariantDark
-                      : AppColors.surfaceVariant,
-                  borderRadius: BorderRadius.circular(26)),
-              child: Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                    color: surface, borderRadius: BorderRadius.circular(20)),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 190,
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
+                color: dark
+                    ? AppColors.surfaceVariantDark
+                    : AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(26),
+              ),
+              padding: const EdgeInsets.all(7),
+              child: Material(
+                color: surface,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  onTap: () => context.push('/products/lat'),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(22),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 190,
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
                             color: dark
                                 ? AppColors.surfaceVariantDark
                                 : AppColors.accentSoft,
-                            borderRadius: BorderRadius.circular(18)),
-                        child: Center(
-                          child: Image.asset(
-                            'assets/images/LAT.webp',
-                            fit: BoxFit.contain,
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Center(
+                            child: Image.asset(
+                              'assets/images/LAT.webp',
+                              fit: BoxFit.contain,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text('Lightweight Air Tester',
-                          style: Theme.of(context).textTheme.headlineLarge),
-                      const SizedBox(height: 8),
-                      Text(
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Lightweight Air Tester',
+                                style:
+                                    Theme.of(context).textTheme.headlineLarge,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.arrow_forward,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
                           'Monitor air quality in your environment with simple, local readings you can trust.',
                           style: Theme.of(context)
                               .textTheme
                               .bodyLarge
-                              ?.copyWith(color: secondary)),
-                      const SizedBox(height: 20),
-                      DetaHubButton(
+                              ?.copyWith(color: secondary),
+                        ),
+                        const SizedBox(height: 16),
+                        DetaHubButton(
+                          label: 'View specifications & story',
+                          outlined: true,
+                          expand: true,
+                          onPressed: () => context.push('/products/lat'),
+                        ),
+                        const SizedBox(height: 8),
+                        DetaHubButton(
                           label: 'Connect this product',
                           icon: Icons.add,
-                          onPressed: () => context.push('/add-device')),
-                    ]),
+                          expand: true,
+                          onPressed: () => context.push('/add-device'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),

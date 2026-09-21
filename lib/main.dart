@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/settings/providers/appearance_provider.dart';
 
 void main() {
   // Ensure Flutter engine is initialized before any platform channel call
@@ -39,6 +40,7 @@ class DetaHubApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
+    final themeMode = ref.watch(appearanceProvider);
 
     return MaterialApp.router(
       title: 'DetaHub',
@@ -47,7 +49,7 @@ class DetaHubApp extends ConsumerWidget {
       // Light mode (default: Crisp Light) / Dark OLED mode.
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system, // Respects device OS preference.
+      themeMode: themeMode,
 
       // GoRouter wiring — replaces home/routes/onGenerateRoute.
       routerConfig: router,
