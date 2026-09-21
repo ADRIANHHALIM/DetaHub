@@ -409,7 +409,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          '1s stream',
+                          'Live · 3s poll',
                           style: AppTheme.monoStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
