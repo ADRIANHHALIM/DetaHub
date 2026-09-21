@@ -30,14 +30,18 @@ class LocationsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
         title: const Text('Locations'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_location_alt_outlined, size: 20),
+            icon: const Icon(Icons.add_location_alt_outlined, size: 22),
             tooltip: 'Add Location',
             onPressed: () => _promptAddLocation(context, ref),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 8),
         ],
       ),
       body: hierarchyAsync.when(
@@ -291,7 +295,12 @@ class _AreaCard extends ConsumerWidget {
                       padding: const EdgeInsets.fromLTRB(24, 8, 8, 8),
                       child: Row(
                         children: [
-                          const Icon(Icons.air, size: 14, color: AppColors.aqiGood),
+                          Image.asset(
+                            'assets/images/LAT.webp',
+                            width: 20,
+                            height: 20,
+                            fit: BoxFit.contain,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(

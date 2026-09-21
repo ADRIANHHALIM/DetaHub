@@ -1,12 +1,22 @@
 # DetaHub
 
-**Local-first IoT companion app for the DetaLab open-source hardware ecosystem.**
+<p align="center">
+  <img src="./Detahub-text.png" alt="DetaHub Logo" width="380" />
+</p>
 
-[![Flutter](https://img.shields.io/badge/Flutter-3.24+-02569B?style=flat-square&logo=flutter&logoColor=white)](https://flutter.dev)
-[![Dart](https://img.shields.io/badge/Dart-3.4+-0175C2?style=flat-square&logo=dart&logoColor=white)](https://dart.dev)
-[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-10B981?style=flat-square)](#)
+<p align="center">
+  <strong>Local-first IoT companion app for the DetaLab open-source hardware ecosystem.</strong>
+</p>
+
+<p align="center">
+  <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.24+-02569B?style=flat-square&logo=flutter&logoColor=white" alt="Flutter"></a>
+  <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.4+-0175C2?style=flat-square&logo=dart&logoColor=white" alt="Dart"></a>
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS-10B981?style=flat-square" alt="Platform">
+</p>
 
 > NO CLOUD. NO LOGIN. NO SHARE. SAVE YOUR OWN DATA.
+
+---
 
 ---
 

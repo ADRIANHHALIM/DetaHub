@@ -253,40 +253,20 @@ class _ProductPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-        width: 54,
-        height: 54,
-        decoration: BoxDecoration(
-            color:
-                dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(17)),
-        child: CustomPaint(
-            painter: _DevicePainter(
-                dark ? AppColors.textPrimaryDark : AppColors.textPrimary)));
+      width: 54,
+      height: 54,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color:
+            dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(17),
+      ),
+      child: Image.asset(
+        'assets/images/LAT.webp',
+        fit: BoxFit.contain,
+      ),
+    );
   }
-}
-
-class _DevicePainter extends CustomPainter {
-  final Color c;
-  _DevicePainter(this.c);
-  @override
-  void paint(Canvas canvas, Size s) {
-    final p = Paint()
-      ..color = c
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(
-                s.width * .29, s.height * .2, s.width * .42, s.height * .6),
-            const Radius.circular(7)),
-        p);
-    canvas.drawCircle(Offset(s.width * .5, s.height * .38), 3, p);
-    canvas.drawLine(Offset(s.width * .39, s.height * .58),
-        Offset(s.width * .61, s.height * .58), p);
-  }
-
-  @override
-  bool shouldRepaint(_DevicePainter o) => o.c != c;
 }
 
 class _Status extends StatelessWidget {
