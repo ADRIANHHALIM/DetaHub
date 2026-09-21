@@ -100,6 +100,22 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
         if (!mounted) return;
         setState(() {
           _liveData = value;
+          if (value.temperature != null) {
+            _tempHistory.add(value.temperature!);
+            if (_tempHistory.length > 120) _tempHistory.removeAt(0);
+          }
+          if (value.humidity != null) {
+            _humidityHistory.add(value.humidity!);
+            if (_humidityHistory.length > 120) _humidityHistory.removeAt(0);
+          }
+          if (value.eco2 != null) {
+            _eco2History.add(value.eco2!.toDouble());
+            if (_eco2History.length > 120) _eco2History.removeAt(0);
+          }
+          if (value.tvoc != null) {
+            _tvocHistory.add(value.tvoc!.toDouble());
+            if (_tvocHistory.length > 120) _tvocHistory.removeAt(0);
+          }
           _fetchingLive = false;
           _connectionStatus = ConnectionStatus.online;
           _appendRealReading(value);

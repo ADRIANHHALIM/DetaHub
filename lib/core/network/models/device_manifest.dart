@@ -1,29 +1,17 @@
 // lib/core/network/models/device_manifest.dart
-//
-// DTO for GET /api/manifest response from a DetaLab IoT device.
-// The manifest is the first call made after a user enters a device URL —
-// it auto-fills the device ID, product type, and available metrics.
 
 import 'live_telemetry.dart';
 
-/// Parsed response from a device's /api/manifest endpoint.
+/// Parsed device metadata returned by a DetaLab device.
 ///
-/// Example JSON:
-/// ```json
-/// {
-///   "device_id":       "lat-lab-01",
-///   "product_type":    "LAT_ENS160",
-///   "firmware_version":"1.2.0",
-///   "metrics":         ["temperature","humidity","eco2","tvoc","aqi"],
-///   "uptime":          3600
-/// }
-/// ```
+/// Accepts both the original /api/manifest contract and the current LAT
+/// test firmware /data response.
 class DeviceManifest {
   final String deviceId;
   final String productType;
   final String firmwareVersion;
   final List<String> metrics;
-  final int? uptime; // seconds since last boot, optional
+  final int? uptime;
 
   const DeviceManifest({
     required this.deviceId,
@@ -33,21 +21,23 @@ class DeviceManifest {
     this.uptime,
   });
 
-  /// Parses a raw JSON map from Dio's response data.
-  /// Throws [FormatException] if required fields are missing — caught by
-  /// [DeviceApiService] and converted to a [ParseError].
   factory DeviceManifest.fromJson(Map<String, dynamic> json) {
+    final deviceId = _string(json, const ['device_id', 'deviceId', 'id']);
+    if (deviceId == null || deviceId.isEmpty) {
+      throw const FormatException('Missing device_id in device response');
+    }
+    final productType = _string(json, const ['product_type', 'productType']);
+    if (productType == null || productType.isEmpty) {
+      throw const FormatException('Missing product_type in device response');
+    }
     return DeviceManifest(
-      deviceId: json['device_id'] as String? ??
-          (throw const FormatException('Missing device_id in manifest')),
-      productType: json['product_type'] as String? ??
-          (throw const FormatException('Missing product_type in manifest')),
-      firmwareVersion: json['firmware_version'] as String? ?? 'unknown',
-      metrics: (json['metrics'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
-      uptime: json['uptime'] as int?,
+      deviceId: deviceId,
+      productType: productType,
+      firmwareVersion:
+          _string(json, const ['firmware_version', 'firmwareVersion']) ??
+              'unknown',
+      metrics: _metrics(json),
+      uptime: _int(json['uptime']),
     );
   }
 
@@ -74,8 +64,28 @@ class DeviceManifest {
           ? telemetry.productType!.trim()
           : 'LAT',
       firmwareVersion: 'unknown',
-      metrics: metrics,
+      metrics: metrics.isNotEmpty
+          ? metrics
+          : const ['temperature', 'humidity', 'eco2', 'tvoc', 'aqi'],
       uptime: telemetry.uptime,
+    );
+  }
+
+  factory DeviceManifest.fromDataJson(
+    Map<String, dynamic> json, {
+    required String fallbackDeviceId,
+  }) {
+    final data = _unwrap(json);
+    return DeviceManifest(
+      deviceId: _string(data, const ['device_id', 'deviceId', 'id']) ??
+          fallbackDeviceId,
+      productType:
+          _string(data, const ['product_type', 'productType']) ?? 'LAT_ENS160',
+      firmwareVersion:
+          _string(data, const ['firmware_version', 'firmwareVersion']) ??
+              'unknown',
+      metrics: const ['temperature', 'humidity', 'eco2', 'tvoc', 'aqi'],
+      uptime: _int(data['uptime']),
     );
   }
 
@@ -94,6 +104,27 @@ class DeviceManifest {
         .replaceAll(RegExp(r'^-+|-+$'), '');
     return sanitized.isNotEmpty ? sanitized : 'device';
   }
+
+  static Map<String, dynamic> _unwrap(Map<String, dynamic> json) {
+    final nested = json['data'];
+    return nested is Map<String, dynamic> ? nested : json;
+  }
+
+  static List<String> _metrics(Map<String, dynamic> json) {
+    final raw = json['metrics'];
+    if (raw is List) return raw.map((e) => e.toString()).toList();
+    return const [];
+  }
+
+  static String? _string(Map<String, dynamic> json, List<String> keys) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+    return null;
+  }
+
+  static int? _int(dynamic value) => value is num ? value.toInt() : null;
 
   @override
   String toString() =>

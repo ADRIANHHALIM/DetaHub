@@ -16,8 +16,8 @@ import 'models/live_telemetry.dart';
 
 /// Provides typed access to a DetaLab device's local HTTP endpoints.
 ///
-/// The [baseUrl] is passed per-call (not stored) because each device
-/// has its own IP/URL and the service is shared across all devices.
+/// Current LAT firmware exposes /data for the live snapshot. The original
+/// /api/live contract is retained as a fallback for compatibility.
 class DeviceApiService {
   final Dio _dio;
 
