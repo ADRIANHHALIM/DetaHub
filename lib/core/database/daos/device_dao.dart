@@ -20,7 +20,8 @@ class DeviceDao extends DatabaseAccessor<AppDatabase> with _$DeviceDaoMixin {
 
   /// Reactive stream of all devices across all sub-sectors.
   Stream<List<Device>> watchAllDevices() =>
-      (select(devices)..orderBy([(d) => OrderingTerm.asc(d.createdAt)])).watch();
+      (select(devices)..orderBy([(d) => OrderingTerm.asc(d.createdAt)]))
+          .watch();
 
   /// Reactive stream of all devices within a given sub-sector.
   /// Emits a new list whenever any device in that sub-sector changes.
@@ -33,8 +34,7 @@ class DeviceDao extends DatabaseAccessor<AppDatabase> with _$DeviceDaoMixin {
   /// One-shot fetch of a single device by its string ID.
   /// Returns null if the device does not exist.
   Future<Device?> getDeviceById(String deviceId) =>
-      (select(devices)..where((d) => d.id.equals(deviceId)))
-          .getSingleOrNull();
+      (select(devices)..where((d) => d.id.equals(deviceId))).getSingleOrNull();
 
   /// Reactive stream for a single device (used on the device detail screen).
   Stream<Device?> watchDeviceById(String deviceId) =>

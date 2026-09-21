@@ -6,9 +6,11 @@ import '../../../core/database/daos/sector_dao.dart';
 import '../../../core/database/app_database.dart' show Sector;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/connection_pill.dart';
 import '../../../core/widgets/detahub_brand.dart';
 import '../../../core/widgets/detahub_button.dart';
 import '../../../core/widgets/detahub_section_header.dart';
+import '../../device/providers/device_providers.dart';
 import '../../sector/providers/sector_providers.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
@@ -147,16 +149,37 @@ class _LocationFilters extends StatelessWidget {
   }
 }
 
-class _DeviceCard extends StatelessWidget {
+class _DeviceCard extends ConsumerWidget {
   final DeviceWithLocation item;
   const _DeviceCard({required this.item});
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final secondary =
         dark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final muted = dark ? AppColors.textMutedDark : AppColors.textMuted;
     final device = item.device;
+
+    final latest =
+        ref.watch(watchLatestTelemetryRecordProvider(device.id)).valueOrNull;
+
+    final isRecentlySeen = device.lastSeenAt != null &&
+        DateTime.now().difference(device.lastSeenAt!).inSeconds < 15;
+    final connectionStatus = device.lastSeenAt == null
+        ? ConnectionStatus.unknown
+        : (isRecentlySeen ? ConnectionStatus.online : ConnectionStatus.offline);
+
+    final aqiStr = latest?.aqi?.toString() ?? '--';
+    final aqiNote =
+        latest?.aqi != null ? AppColors.labelForAqi(latest!.aqi!) : null;
+    final tempStr = latest?.temperature != null
+        ? '${latest!.temperature!.toStringAsFixed(1)} °C'
+        : '-- °C';
+    final humStr = latest?.humidity != null
+        ? '${latest!.humidity!.toStringAsFixed(1)} %'
+        : '-- %';
+
     return Material(
         color: dark ? AppColors.surfaceDark : AppColors.surface,
         borderRadius: BorderRadius.circular(kRadiusCard),
@@ -223,28 +246,39 @@ class _DeviceCard extends StatelessWidget {
                                           ?.copyWith(color: secondary))
                                 ])),
                             const SizedBox(width: 8),
-                            const _Status()
+                            ConnectionPill(status: connectionStatus),
                           ]),
                       const SizedBox(height: 20),
-                      const Row(children: [
-                        _Metric(label: 'AQI', value: '42', note: 'Good'),
-                        _Metric(label: 'Temperature', value: '27.4 °C'),
-                        _Metric(label: 'Humidity', value: '61 %')
-                      ]),
-                      const SizedBox(height: 17),
-                      CustomPaint(
-                          size: const Size(double.infinity, 24),
-                          painter: _SparklinePainter(
-                              dark ? AppColors.accentDark : AppColors.accent)),
-                      const SizedBox(height: 8),
                       Row(children: [
-                        const _Status(compact: false),
+                        _Metric(label: 'AQI', value: aqiStr, note: aqiNote),
+                        _Metric(label: 'Temperature', value: tempStr),
+                        _Metric(label: 'Humidity', value: humStr),
+                      ]),
+                      const SizedBox(height: 14),
+                      Divider(
+                        height: 1,
+                        color: dark
+                            ? AppColors.borderDark
+                            : AppColors.borderSubtle,
+                      ),
+                      const SizedBox(height: 10),
+                      Row(children: [
+                        Text(
+                          latest?.timestamp != null
+                              ? 'Last update: ${_formatTime(latest!.timestamp)}'
+                              : 'Waiting for first reading',
+                          style: AppTheme.monoStyle(fontSize: 10, color: muted),
+                        ),
                         const Spacer(),
-                        Text('Updated just now',
-                            style:
-                                AppTheme.monoStyle(fontSize: 10, color: muted))
+                        Icon(Icons.arrow_forward, size: 14, color: muted),
                       ]),
                     ]))));
+  }
+
+  String _formatTime(DateTime timestamp) {
+    final local = timestamp.toLocal();
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    return '${twoDigits(local.hour)}:${twoDigits(local.minute)}:${twoDigits(local.second)}';
   }
 }
 
@@ -257,8 +291,7 @@ class _ProductPlaceholder extends StatelessWidget {
       height: 54,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color:
-            dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant,
+        color: dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariant,
         borderRadius: BorderRadius.circular(17),
       ),
       child: Image.asset(
@@ -267,26 +300,6 @@ class _ProductPlaceholder extends StatelessWidget {
       ),
     );
   }
-}
-
-class _Status extends StatelessWidget {
-  final bool compact;
-  const _Status({this.compact = true});
-  @override
-  Widget build(BuildContext c) =>
-      Row(mainAxisSize: MainAxisSize.min, children: [
-        Container(
-            width: 7,
-            height: 7,
-            decoration: const BoxDecoration(
-                color: AppColors.aqiGood, shape: BoxShape.circle)),
-        if (!compact) ...[
-          const SizedBox(width: 6),
-          Text('Connected',
-              style: Theme.of(c).textTheme.labelMedium?.copyWith(
-                  color: AppColors.aqiGood, fontWeight: FontWeight.w700))
-        ]
-      ]);
 }
 
 class _Metric extends StatelessWidget {
@@ -311,31 +324,6 @@ class _Metric extends StatelessWidget {
                 color: AppColors.aqiGood, fontWeight: FontWeight.w700))
     ]));
   }
-}
-
-class _SparklinePainter extends CustomPainter {
-  final Color c;
-  _SparklinePainter(this.c);
-  @override
-  void paint(Canvas canvas, Size s) {
-    final p = Paint()
-      ..color = c.withValues(alpha: .68)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round;
-    final path = Path()
-      ..moveTo(0, s.height * .72)
-      ..cubicTo(s.width * .15, s.height * .55, s.width * .2, s.height * .83,
-          s.width * .34, s.height * .54)
-      ..cubicTo(s.width * .5, s.height * .15, s.width * .61, s.height * .63,
-          s.width * .77, s.height * .38)
-      ..cubicTo(s.width * .88, s.height * .2, s.width * .92, s.height * .46,
-          s.width, s.height * .23);
-    canvas.drawPath(path, p);
-  }
-
-  @override
-  bool shouldRepaint(_SparklinePainter o) => o.c != c;
 }
 
 class _EmptyDevices extends StatelessWidget {

@@ -36,11 +36,14 @@ class MetricCard extends StatelessWidget {
   /// Optional tap callback.
   final VoidCallback? onTap;
 
-  /// Optional list of real-time per-second points for the mini graph under the value.
+  /// Optional list of real received points for the mini graph under the value.
   final List<double>? history;
 
-  /// Line and gradient tint color for the per-second mini graph.
+  /// Line and gradient tint color for the received-data mini graph.
   final Color? chartColor;
+
+  /// A concise label for the data cadence shown beside a real trend.
+  final String trendLabel;
 
   const MetricCard({
     super.key,
@@ -51,6 +54,7 @@ class MetricCard extends StatelessWidget {
     this.onTap,
     this.history,
     this.chartColor,
+    this.trendLabel = 'recent',
   });
 
   @override
@@ -96,7 +100,7 @@ class MetricCard extends StatelessWidget {
                 ),
                 if (hasGraph)
                   Text(
-                    '1s',
+                    trendLabel,
                     style: AppTheme.monoStyle(
                             fontSize: 8, fontWeight: FontWeight.w600)
                         .copyWith(color: unitColor),
@@ -131,7 +135,7 @@ class MetricCard extends StatelessWidget {
                 height: 26,
                 width: double.infinity,
                 child: CustomPaint(
-                  painter: _PerSecondGraphPainter(
+                  painter: _LiveTrendGraphPainter(
                     data: history!,
                     color: graphColor,
                   ),
@@ -159,13 +163,13 @@ class MetricCard extends StatelessWidget {
   }
 }
 
-/// CustomPainter for real-time per-second telemetry data.
-/// Renders a smooth cubic Bezier curve, area gradient fill, and live pulse dot.
-class _PerSecondGraphPainter extends CustomPainter {
+/// CustomPainter for real received telemetry data.
+/// Renders a smooth cubic Bezier curve, area gradient fill, and latest point marker.
+class _LiveTrendGraphPainter extends CustomPainter {
   final List<double> data;
   final Color color;
 
-  _PerSecondGraphPainter({
+  _LiveTrendGraphPainter({
     required this.data,
     required this.color,
   });
@@ -249,7 +253,7 @@ class _PerSecondGraphPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(path, strokePaint);
 
-    // Pulse dot at current second (far right)
+    // Pulse dot at latest reading (far right)
     final lastPoint = points.last;
     final dotPaint = Paint()..color = color;
     canvas.drawCircle(lastPoint, 2.2, dotPaint);
@@ -262,7 +266,7 @@ class _PerSecondGraphPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _PerSecondGraphPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _LiveTrendGraphPainter oldDelegate) => true;
 }
 
 /// A compact variant of [MetricCard] for list rows and summary strips.
@@ -283,7 +287,8 @@ class MetricTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final labelColor = isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final labelColor =
+        isDark ? AppColors.textSecondaryDark : AppColors.textSecondary;
     final unitColor = isDark ? AppColors.textMutedDark : AppColors.textMuted;
     final dataColor = valueColor ??
         (isDark ? AppColors.textPrimaryDark : AppColors.textPrimary);

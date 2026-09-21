@@ -30,8 +30,7 @@ class MetricAggregate {
   const MetricAggregate({this.min, this.max, this.avg});
 
   @override
-  String toString() =>
-      'MetricAggregate(min: $min, max: $max, avg: $avg)';
+  String toString() => 'MetricAggregate(min: $min, max: $max, avg: $avg)';
 }
 
 /// Complete daily aggregation result for all metrics of one device.
@@ -168,11 +167,21 @@ class TelemetryDao extends DatabaseAccessor<AppDatabase>
 
     final query = selectOnly(telemetryRecords)
       ..addColumns([
-        minTemp, maxTemp, avgTemp,
-        minHum,  maxHum,  avgHum,
-        minEco2, maxEco2, avgEco2,
-        minTvoc, maxTvoc, avgTvoc,
-        minAqi,  maxAqi,  avgAqi,
+        minTemp,
+        maxTemp,
+        avgTemp,
+        minHum,
+        maxHum,
+        avgHum,
+        minEco2,
+        maxEco2,
+        avgEco2,
+        minTvoc,
+        maxTvoc,
+        avgTvoc,
+        minAqi,
+        maxAqi,
+        avgAqi,
         countExpr,
       ])
       ..where(

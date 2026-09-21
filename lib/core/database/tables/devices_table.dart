@@ -41,9 +41,8 @@ class Devices extends Table {
       dateTime().nullable().named('last_seen_at')();
 
   /// Local creation timestamp.
-  DateTimeColumn get createdAt => dateTime()
-      .withDefault(currentDateAndTime)
-      .named('created_at')();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(currentDateAndTime).named('created_at')();
 
   @override
   Set<Column> get primaryKey => {id};

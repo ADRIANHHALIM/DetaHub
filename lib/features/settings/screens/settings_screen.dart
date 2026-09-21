@@ -74,9 +74,7 @@ class _SettingGroup extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text(title.toUpperCase(),
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              letterSpacing: 1.1,
-              fontWeight: FontWeight.w700,
-              fontSize: 11)),
+              letterSpacing: 1.1, fontWeight: FontWeight.w700, fontSize: 11)),
       const SizedBox(height: 10),
       Container(
           decoration: BoxDecoration(

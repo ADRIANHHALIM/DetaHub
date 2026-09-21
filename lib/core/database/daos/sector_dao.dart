@@ -166,7 +166,8 @@ class SectorDao extends DatabaseAccessor<AppDatabase> with _$SectorDaoMixin {
     final query = select(devices).join([
       innerJoin(subSectors, subSectors.id.equalsExp(devices.subSectorId)),
       innerJoin(sectors, sectors.id.equalsExp(subSectors.sectorId)),
-    ])..orderBy([OrderingTerm.asc(devices.createdAt)]);
+    ])
+      ..orderBy([OrderingTerm.asc(devices.createdAt)]);
 
     return query.watch().map((rows) {
       return rows.map((row) {
@@ -186,7 +187,8 @@ class SectorDao extends DatabaseAccessor<AppDatabase> with _$SectorDaoMixin {
     final query = select(devices).join([
       innerJoin(subSectors, subSectors.id.equalsExp(devices.subSectorId)),
       innerJoin(sectors, sectors.id.equalsExp(subSectors.sectorId)),
-    ])..where(devices.id.equals(deviceId));
+    ])
+      ..where(devices.id.equals(deviceId));
 
     return query.watchSingleOrNull().map((row) {
       if (row == null) return null;

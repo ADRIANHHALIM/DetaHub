@@ -16,7 +16,6 @@ class Sectors extends Table {
   TextColumn get name => text().withLength(min: 1, max: 128)();
 
   /// ISO-8601 timestamp of when this sector was created locally.
-  DateTimeColumn get createdAt => dateTime()
-      .withDefault(currentDateAndTime)
-      .named('created_at')();
+  DateTimeColumn get createdAt =>
+      dateTime().withDefault(currentDateAndTime).named('created_at')();
 }

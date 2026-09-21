@@ -56,8 +56,7 @@ class DeviceListScreen extends ConsumerWidget {
           return ListView.separated(
             padding: const EdgeInsets.symmetric(vertical: 8),
             itemCount: devices.length,
-            separatorBuilder: (_, __) =>
-                Divider(height: 1, color: borderColor),
+            separatorBuilder: (_, __) => Divider(height: 1, color: borderColor),
             itemBuilder: (_, i) => _DeviceCard(
               device: devices[i],
               onDelete: () => _confirmDelete(context, ref, devices[i]),
@@ -68,8 +67,7 @@ class DeviceListScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         mini: true,
         elevation: 0,
-        backgroundColor:
-            isDark ? AppColors.surfaceDark : AppColors.surface,
+        backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(4),
           side: BorderSide(color: borderColor),
@@ -216,8 +214,10 @@ class _EmptyDeviceState extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             'Tap + to register your first device.',
-            style:
-                Theme.of(context).textTheme.bodySmall?.copyWith(color: mutedColor),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: mutedColor),
           ),
           const SizedBox(height: 20),
           OutlinedButton(onPressed: onAdd, child: const Text('Add Device')),

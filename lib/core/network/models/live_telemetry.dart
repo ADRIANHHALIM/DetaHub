@@ -1,76 +1,233 @@
-// lib/core/network/models/live_telemetry.dart
-//
-// DTO for GET /api/live response from a DetaLab IoT device.
-// All sensor fields are nullable — the device may omit values if
-// the sensor is not warmed up or if the metric is not supported.
-
-/// Parsed real-time telemetry snapshot from a device's /api/live endpoint.
+/// Real-time telemetry returned by a LAT device's `/data` endpoint.
 ///
-/// Example JSON:
-/// ```json
-/// {
-///   "timestamp":   "2024-01-15T08:30:00",
-///   "temperature": 24.5,
-///   "humidity":    62.3,
-///   "eco2":        450,
-///   "tvoc":        120,
-///   "aqi":         1,
-///   "uptime":      7200
-/// }
-/// ```
+/// All sensor fields are nullable: a missing value means the hardware did not
+/// provide it. Invalid supplied values are rejected as malformed data.
 class LiveTelemetry {
   final DateTime timestamp;
+  final bool hasHardwareTimestamp;
   final double? temperature;
   final double? humidity;
   final int? eco2;
   final int? tvoc;
   final int? aqi;
-  final int? uptime; // seconds
+  final int? uptime;
+  final int? totalRecords;
+  final String? fileName;
+  final String? deviceId;
+  final String? productType;
 
   const LiveTelemetry({
     required this.timestamp,
+    required this.hasHardwareTimestamp,
     this.temperature,
     this.humidity,
     this.eco2,
     this.tvoc,
     this.aqi,
     this.uptime,
+    this.totalRecords,
+    this.fileName,
+    this.deviceId,
+    this.productType,
   });
 
-  /// Parses a raw JSON map from Dio's response.
-  /// Timestamp is parsed from ISO-8601 string; falls back to [DateTime.now]
-  /// if the field is absent (should not happen in production firmware).
-  factory LiveTelemetry.fromJson(Map<String, dynamic> json) {
-    final tsRaw = json['timestamp'] ?? json['ntp_time'] ?? json['ntpTime'];
-    final timestamp = tsRaw is String
-        ? DateTime.tryParse(tsRaw) ?? DateTime.now()
-        : DateTime.now();
+  /// Supports the field spelling used by current and older LAT firmware.
+  ///
+  /// A local receipt time is used only when firmware omits a timestamp or when
+  /// the hardware timestamp is zero / unsynced NTP (pre-2020).
+  factory LiveTelemetry.fromJson(
+    Map<String, dynamic> json, {
+    DateTime? receivedAt,
+  }) {
+    final timestampRaw = _firstValue(
+      json,
+      const [
+        'timestamp',
+        'ntp_time',
+        'ntpTime',
+        'time',
+        'Timestamp',
+        'NTP_TIME',
+        'NtpTime',
+        'Time'
+      ],
+    );
+    final parsedTimestamp = _parseTimestamp(timestampRaw);
+    final rawStr = timestampRaw?.toString().trim();
+    if (timestampRaw != null &&
+        rawStr != null &&
+        rawStr.isNotEmpty &&
+        rawStr != '0' &&
+        parsedTimestamp == null) {
+      throw const FormatException('Invalid telemetry timestamp');
+    }
+
+    final effectiveTimestamp = parsedTimestamp ?? receivedAt ?? DateTime.now();
 
     return LiveTelemetry(
-      timestamp: timestamp,
-      temperature: _double(json, ['temperature', 'temp']),
-      humidity: _double(json, ['humidity', 'hum']),
-      eco2: _int(json, ['eco2', 'eCO2']),
-      tvoc: _int(json, ['tvoc', 'TVOC']),
-      aqi: _int(json, ['aqi', 'AQI']),
-      uptime: json['uptime'] as int?,
+      timestamp: effectiveTimestamp,
+      hasHardwareTimestamp: parsedTimestamp != null,
+      temperature: _asDouble(
+        _firstValue(json, const [
+          'temperature',
+          'temp',
+          'Temperature',
+          'Temp',
+          'TEMP',
+        ]),
+        'temperature',
+      ),
+      humidity: _asDouble(
+        _firstValue(json, const [
+          'humidity',
+          'hum',
+          'Humidity',
+          'Hum',
+          'HUM',
+        ]),
+        'humidity',
+      ),
+      eco2: _asInt(
+        _firstValue(json, const [
+          'eco2',
+          'eCO2',
+          'ECO2',
+          'Eco2',
+          'co2',
+          'CO2',
+        ]),
+        'eco2',
+      ),
+      tvoc: _asInt(
+        _firstValue(json, const [
+          'tvoc',
+          'TVOC',
+          'Tvoc',
+        ]),
+        'tvoc',
+      ),
+      aqi: _asInt(
+        _firstValue(json, const [
+          'aqi',
+          'AQI',
+          'Aqi',
+        ]),
+        'aqi',
+      ),
+      uptime: _asInt(
+        _firstValue(json, const ['uptime', 'Uptime']),
+        'uptime',
+      ),
+      totalRecords: _asInt(
+        _firstValue(json, const [
+          'total_records',
+          'totalRecords',
+          'totalrecords',
+          'TotalRecords',
+          'records',
+          'Records',
+        ]),
+        'total_records',
+      ),
+      fileName: _asString(
+        _firstValue(json, const [
+          'file_name',
+          'fileName',
+          'filename',
+          'FileName',
+          'Filename',
+          'file',
+        ]),
+        'file_name',
+      ),
+      deviceId: _asString(
+        _firstValue(json, const [
+          'device_id',
+          'deviceId',
+          'id',
+          'DeviceId',
+          'ID',
+        ]),
+        'device_id',
+      ),
+      productType: _asString(
+        _firstValue(json, const [
+          'product_type',
+          'productType',
+          'model',
+          'ProductType',
+          'Model',
+          'type',
+        ]),
+        'product_type',
+      ),
     );
   }
 
-  static double? _double(Map<String, dynamic> json, List<String> keys) {
+  static dynamic _firstValue(Map<String, dynamic> json, List<String> keys) {
     for (final key in keys) {
-      final value = json[key];
-      if (value is num) return value.toDouble();
+      if (json.containsKey(key) && json[key] != null) return json[key];
     }
     return null;
   }
 
-  static int? _int(Map<String, dynamic> json, List<String> keys) {
-    for (final key in keys) {
-      final value = json[key];
-      if (value is num) return value.toInt();
+  static DateTime? _parseTimestamp(dynamic value) {
+    if (value == null) return null;
+    if (value is num) {
+      final n = value.toInt();
+      if (n <= 0) return null;
+      if (n > 100000000000) {
+        final dt = DateTime.fromMillisecondsSinceEpoch(n, isUtc: true);
+        return dt.year >= 2020 ? dt : null;
+      }
+      final dt = DateTime.fromMillisecondsSinceEpoch(n * 1000, isUtc: true);
+      return dt.year >= 2020 ? dt : null;
+    }
+    if (value is String) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty || trimmed == '0') return null;
+      final numVal = int.tryParse(trimmed);
+      if (numVal != null) {
+        if (numVal <= 0) return null;
+        if (numVal > 100000000000) {
+          final dt = DateTime.fromMillisecondsSinceEpoch(numVal, isUtc: true);
+          return dt.year >= 2020 ? dt : null;
+        }
+        final dt =
+            DateTime.fromMillisecondsSinceEpoch(numVal * 1000, isUtc: true);
+        return dt.year >= 2020 ? dt : null;
+      }
+      final parsed = DateTime.tryParse(trimmed);
+      if (parsed != null && parsed.year >= 2020) return parsed;
     }
     return null;
+  }
+
+  static double? _asDouble(dynamic value, String field) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final parsed = double.tryParse(value.trim());
+      if (parsed != null) return parsed;
+    }
+    throw FormatException('Invalid $field value');
+  }
+
+  static int? _asInt(dynamic value, String field) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num && value == value.roundToDouble()) return value.toInt();
+    if (value is String) {
+      final parsed = int.tryParse(value.trim());
+      if (parsed != null) return parsed;
+    }
+    throw FormatException('Invalid $field value');
+  }
+
+  static String? _asString(dynamic value, String field) {
+    if (value == null) return null;
+    if (value is String) return value.trim();
+    throw FormatException('Invalid $field value');
   }
 
   @override

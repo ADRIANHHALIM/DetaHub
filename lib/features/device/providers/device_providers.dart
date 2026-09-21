@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/daos/device_dao.dart';
+import '../../../core/database/daos/telemetry_dao.dart';
 import '../../../core/network/network_error.dart';
 import '../../../core/network/models/device_manifest.dart';
 import '../../../core/network/providers/network_providers.dart';
@@ -29,6 +30,12 @@ final watchDevicesProvider =
 final watchDeviceProvider =
     StreamProvider.family<Device?, String>((ref, deviceId) {
   return ref.watch(deviceDaoProvider).watchDeviceById(deviceId);
+});
+
+/// Last persisted reading, used as honest offline/initial state on detail.
+final watchLatestTelemetryRecordProvider =
+    StreamProvider.family<TelemetryRecord?, String>((ref, deviceId) {
+  return ref.watch(telemetryDaoProvider).watchLatestRecord(deviceId);
 });
 
 // ---------------------------------------------------------------------------
@@ -70,9 +77,7 @@ class DeviceMutationNotifier extends AsyncNotifier<void> {
   }
 
   Future<void> updateLastSeen(String deviceId) async {
-    await ref
-        .read(deviceDaoProvider)
-        .updateLastSeen(deviceId, DateTime.now());
+    await ref.read(deviceDaoProvider).updateLastSeen(deviceId, DateTime.now());
   }
 }
 

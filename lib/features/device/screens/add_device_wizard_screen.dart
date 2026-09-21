@@ -43,9 +43,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
   String _productType = 'LAT_ENS160';
 
   // Connection
-  final _addressController = TextEditingController(text: '192.168.1.50');
+  final _addressController = TextEditingController();
   bool _searching = false;
-  bool _showManualAddress = false;
   String? _connectError;
   DeviceManifest? _discoveredManifest;
   String _finalUrl = '';
@@ -110,14 +109,15 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
   }
 
   String _readableError(NetworkError error) => switch (error) {
-        TimeoutError() =>
-          'Device not responding. Make sure it is powered on and connected to the same Wi-Fi.',
+        TimeoutError() ||
         UnreachableError() =>
-          'Cannot reach device at this address. Check the IP and Wi-Fi connection.',
+          'Device tidak dapat dihubungi. Pastikan ponsel dan perangkat berada di jaringan Wi-Fi yang sama.',
         NotFoundError() =>
-          'Connected, but this device does not appear to be a DetaLab product.',
-        ParseError() => 'Device returned an unexpected response format.',
-        UnknownNetworkError(:final cause) => 'Connection error: $cause',
+          'Endpoint data perangkat tidak ditemukan. Periksa kembali alamat lokal perangkat.',
+        ParseError() =>
+          'Data dari perangkat tidak dapat dibaca. Format respons tidak sesuai.',
+        UnknownNetworkError() =>
+          'Koneksi ke perangkat gagal. Silakan periksa jaringan Wi-Fi dan coba lagi.',
       };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -342,10 +342,8 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
               ?.copyWith(color: textSecondary),
         ),
         const SizedBox(height: 24),
-
-        // Discovery is the prominent path; no technical address is shown first.
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: surfaceColor,
             borderRadius: BorderRadius.circular(kRadiusCard),
@@ -355,91 +353,43 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Find nearby devices',
+                'Device Address',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
               ),
               const SizedBox(height: 4),
               Text(
-                'We’ll look for DetaLab devices on the same Wi-Fi network.',
+                'Enter the local address shown by the device.',
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
                     ?.copyWith(color: textSecondary),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. 192.168.4.1 or lat.local',
+                ),
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                onSubmitted: (_) {
+                  if (!_searching) _attemptConnection(_addressController.text);
+                },
+              ),
+              const SizedBox(height: 16),
               DetaHubButton(
-                  label: _searching
-                      ? 'Looking for devices…'
-                      : 'Find nearby devices',
-                  icon: Icons.radar_outlined,
-                  expand: true,
-                  onPressed: _searching
-                      ? null
-                      : () => _attemptConnection('192.168.1.50')),
+                label: _searching ? 'Testing connection…' : 'Test connection',
+                icon: Icons.sensors_outlined,
+                expand: true,
+                onPressed: _searching
+                    ? null
+                    : () => _attemptConnection(_addressController.text),
+              ),
             ],
           ),
         ),
-
-        const SizedBox(height: 16),
-
-        Material(
-            color: Colors.transparent,
-            child: InkWell(
-                onTap: () =>
-                    setState(() => _showManualAddress = !_showManualAddress),
-                borderRadius: BorderRadius.circular(kRadiusCard),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                      color: surfaceColor,
-                      borderRadius: BorderRadius.circular(kRadiusCard),
-                      border: Border.all(color: borderColor, width: 1)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(children: [
-                        Expanded(
-                            child: Text('Enter an address manually',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .titleSmall
-                                    ?.copyWith(fontWeight: FontWeight.w600))),
-                        Icon(
-                            _showManualAddress
-                                ? Icons.expand_less
-                                : Icons.expand_more,
-                            size: 20)
-                      ]),
-                      if (_showManualAddress) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                            'If you already know your device address, enter it here.',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: textSecondary)),
-                        const SizedBox(height: 12),
-                        TextField(
-                            controller: _addressController,
-                            decoration: const InputDecoration(
-                                hintText: 'e.g. 192.168.1.50 or lat.local'),
-                            keyboardType: TextInputType.url,
-                            autocorrect: false),
-                        const SizedBox(height: 12),
-                        DetaHubButton(
-                            label: 'Connect device',
-                            expand: true,
-                            onPressed: _searching
-                                ? null
-                                : () =>
-                                    _attemptConnection(_addressController.text))
-                      ],
-                    ],
-                  ),
-                ))),
-
         if (_connectError != null) ...[
           const SizedBox(height: 16),
           Container(
@@ -538,7 +488,7 @@ class _AddDeviceWizardScreenState extends ConsumerState<AddDeviceWizardScreen> {
               ),
               const SizedBox(height: 10),
               _infoRow('Model', _productName),
-              _infoRow('ID', _discoveredManifest?.deviceId ?? 'lat-001'),
+              _infoRow('ID', _discoveredManifest?.deviceId ?? '—'),
               _infoRow('Measures', 'Air quality, temperature, humidity'),
             ],
           ),
