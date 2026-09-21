@@ -72,6 +72,15 @@ class SectorDao extends DatabaseAccessor<AppDatabase> with _$SectorDaoMixin {
       (select(sectors)..orderBy([(s) => OrderingTerm.asc(s.createdAt)]))
           .watch();
 
+  /// One-shot fetch of all sectors.
+  Future<List<Sector>> getAllSectors() =>
+      (select(sectors)..orderBy([(s) => OrderingTerm.asc(s.createdAt)])).get();
+
+  /// One-shot fetch of all sub-sectors.
+  Future<List<SubSector>> getAllSubSectors() =>
+      (select(subSectors)..orderBy([(ss) => OrderingTerm.asc(ss.createdAt)]))
+          .get();
+
   /// Inserts a new sector. Returns the auto-generated row ID.
   Future<int> insertSector(SectorsCompanion entry) =>
       into(sectors).insert(entry);

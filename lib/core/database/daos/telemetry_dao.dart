@@ -247,6 +247,113 @@ class TelemetryDao extends DatabaseAccessor<AppDatabase>
                   t.timestamp.isSmallerThanValue(before),
             ))
           .go();
+
+  // --- Storage & Overview Metrics ---
+
+  /// Counts the total number of telemetry records stored across all devices.
+  Future<int> countAllTelemetry() async {
+    final countExpr = telemetryRecords.id.count();
+    final row = await (selectOnly(telemetryRecords)..addColumns([countExpr]))
+        .getSingleOrNull();
+    return row?.read(countExpr) ?? 0;
+  }
+
+  /// Counts the total number of telemetry records stored for [deviceId].
+  Future<int> countTelemetryForDevice(String deviceId) async {
+    final countExpr = telemetryRecords.id.count();
+    final row = await (selectOnly(telemetryRecords)
+          ..addColumns([countExpr])
+          ..where(telemetryRecords.deviceId.equals(deviceId)))
+        .getSingleOrNull();
+    return row?.read(countExpr) ?? 0;
+  }
+
+  /// Returns the earliest telemetry timestamp across all devices.
+  Future<DateTime?> getOldestTimestamp() async {
+    final minTime = telemetryRecords.timestamp.min();
+    final row = await (selectOnly(telemetryRecords)..addColumns([minTime]))
+        .getSingleOrNull();
+    return row?.read(minTime);
+  }
+
+  /// Returns the latest telemetry timestamp across all devices.
+  Future<DateTime?> getNewestTimestamp() async {
+    final maxTime = telemetryRecords.timestamp.max();
+    final row = await (selectOnly(telemetryRecords)..addColumns([maxTime]))
+        .getSingleOrNull();
+    return row?.read(maxTime);
+  }
+
+  /// Returns the earliest telemetry timestamp for [deviceId].
+  Future<DateTime?> getOldestTimestampForDevice(String deviceId) async {
+    final minTime = telemetryRecords.timestamp.min();
+    final row = await (selectOnly(telemetryRecords)
+          ..addColumns([minTime])
+          ..where(telemetryRecords.deviceId.equals(deviceId)))
+        .getSingleOrNull();
+    return row?.read(minTime);
+  }
+
+  /// Returns the latest telemetry timestamp for [deviceId].
+  Future<DateTime?> getNewestTimestampForDevice(String deviceId) async {
+    final maxTime = telemetryRecords.timestamp.max();
+    final row = await (selectOnly(telemetryRecords)
+          ..addColumns([maxTime])
+          ..where(telemetryRecords.deviceId.equals(deviceId)))
+        .getSingleOrNull();
+    return row?.read(maxTime);
+  }
+
+  /// One-shot fetch of the [limit] most recent records for [deviceId].
+  Future<List<TelemetryRecord>> getRecentRecords(
+    String deviceId, {
+    int limit = 10,
+  }) =>
+      (select(telemetryRecords)
+            ..where((t) => t.deviceId.equals(deviceId))
+            ..orderBy([(t) => OrderingTerm.desc(t.timestamp)])
+            ..limit(limit))
+          .get();
+
+  /// Reactive stream of the [limit] most recent records for [deviceId].
+  Stream<List<TelemetryRecord>> watchRecentRecords(
+    String deviceId, {
+    int limit = 10,
+  }) =>
+      (select(telemetryRecords)
+            ..where((t) => t.deviceId.equals(deviceId))
+            ..orderBy([(t) => OrderingTerm.desc(t.timestamp)])
+            ..limit(limit))
+          .watch();
+
+  /// Memory-safe chunked retrieval for exports and backups.
+  ///
+  /// Retrieves up to [limit] records ordered by ascending timestamp,
+  /// strictly after [afterTimestamp] to allow streaming pagination.
+  Future<List<TelemetryRecord>> getTelemetryChunk({
+    String? deviceId,
+    DateTime? afterTimestamp,
+    int limit = 1000,
+  }) async {
+    return (select(telemetryRecords)
+          ..where((t) {
+            Expression<bool> predicate = const Constant(true);
+            if (deviceId != null) {
+              predicate = predicate & t.deviceId.equals(deviceId);
+            }
+            if (afterTimestamp != null) {
+              predicate =
+                  predicate & t.timestamp.isBiggerThanValue(afterTimestamp);
+            }
+            return predicate;
+          })
+          ..orderBy([(t) => OrderingTerm.asc(t.timestamp)])
+          ..limit(limit))
+        .get();
+  }
+
+  /// Deletes all telemetry records.
+  Future<int> clearAllTelemetry() => delete(telemetryRecords).go();
 }
 
 // ---------------------------------------------------------------------------

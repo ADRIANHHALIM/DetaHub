@@ -63,6 +63,17 @@ class AppDatabase extends _$AppDatabase {
           await customStatement('PRAGMA cache_size = -4096');
         },
       );
+
+  /// Safely wipes all local database records across all tables.
+  /// Used exclusively in REPLACE restore mode after explicit user confirmation.
+  Future<void> clearAllData() async {
+    await transaction(() async {
+      await delete(telemetryRecords).go();
+      await delete(devices).go();
+      await delete(subSectors).go();
+      await delete(sectors).go();
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------

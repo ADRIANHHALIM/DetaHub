@@ -50,8 +50,8 @@ class FloatingNavBar extends StatelessWidget {
                       onTap: () => onDestinationSelected(index),
                       borderRadius: BorderRadius.circular(25),
                       child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: const Cubic(.2, .75, .25, 1),
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeOutCubic,
                           height: 48,
                           decoration: BoxDecoration(
                               color: selected
@@ -65,8 +65,8 @@ class FloatingNavBar extends StatelessWidget {
                               children: [
                                 AnimatedScale(
                                     scale: selected ? 1 : .92,
-                                    duration: const Duration(milliseconds: 200),
-                                    curve: const Cubic(.2, .75, .25, 1),
+                                    duration: const Duration(milliseconds: 280),
+                                    curve: Curves.easeOutCubic,
                                     child: Icon(
                                         selected
                                             ? item.selectedIcon
@@ -74,8 +74,8 @@ class FloatingNavBar extends StatelessWidget {
                                         size: 20,
                                         color: selected ? accent : inactive)),
                                 AnimatedSize(
-                                    duration: const Duration(milliseconds: 200),
-                                    curve: const Cubic(.2, .75, .25, 1),
+                                    duration: const Duration(milliseconds: 280),
+                                    curve: Curves.easeOutCubic,
                                     child: selected
                                         ? Padding(
                                             padding:

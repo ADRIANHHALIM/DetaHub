@@ -21,6 +21,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aqi_badge.dart';
 import '../../../core/widgets/connection_pill.dart';
+import '../../../core/widgets/detahub_button.dart';
 import '../../../core/widgets/metric_card.dart';
 import '../providers/device_providers.dart';
 import '../../sector/providers/sector_providers.dart';
@@ -497,6 +498,11 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
               const SizedBox(height: 24),
 
+              // Local telemetry table preview & centralized storage management link
+              _DeviceDataPreview(device: device),
+
+              const SizedBox(height: 24),
+
               // Technical details stay out of the primary data story.
               Text('About this device',
                   style: Theme.of(context).textTheme.headlineMedium),
@@ -658,5 +664,248 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
       await ref.read(deviceMutationProvider.notifier).deleteDevice(device.id);
       if (context.mounted) context.pop();
     }
+  }
+}
+
+class _DeviceDataPreview extends ConsumerWidget {
+  final Device device;
+
+  const _DeviceDataPreview({required this.device});
+
+  String _formatTime(DateTime dt) {
+    final local = dt.toLocal();
+    final h = local.hour.toString().padLeft(2, '0');
+    final m = local.minute.toString().padLeft(2, '0');
+    final s = local.second.toString().padLeft(2, '0');
+    return '$h:$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final surface = dark ? AppColors.surfaceDark : AppColors.surface;
+    final border = dark ? AppColors.borderDark : AppColors.border;
+    final textPrimary =
+        dark ? AppColors.textPrimaryDark : AppColors.textPrimary;
+    final textSecondary =
+        dark ? AppColors.textSecondaryDark : AppColors.textSecondary;
+    final textMuted = dark ? AppColors.textMutedDark : AppColors.textMuted;
+
+    final telemetryDao = ref.watch(telemetryDaoProvider);
+
+    return StreamBuilder<List<TelemetryRecord>>(
+      stream: telemetryDao.watchRecentRecords(device.id, limit: 7),
+      builder: (context, snapshot) {
+        final records = snapshot.data ?? [];
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Local telemetry',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                FutureBuilder<int>(
+                  future: telemetryDao.countTelemetryForDevice(device.id),
+                  builder: (context, countSnap) {
+                    final count = countSnap.data ?? records.length;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 7, vertical: 2.5),
+                      decoration: BoxDecoration(
+                        color: dark
+                            ? AppColors.surfaceVariantDark
+                            : AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(kRadiusChip),
+                        border: Border.all(color: border, width: 1),
+                      ),
+                      child: Text(
+                        '$count records stored',
+                        style: AppTheme.monoStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                        ).copyWith(color: textSecondary),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: BorderRadius.circular(kRadiusCard),
+                border: Border.all(color: border, width: 1),
+              ),
+              child: records.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        child: Column(
+                          children: [
+                            Icon(Icons.hourglass_empty,
+                                size: 22, color: textMuted),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Waiting for local telemetry.',
+                              style:
+                                  TextStyle(color: textSecondary, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        // Table header
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Text('TIME',
+                                  style: AppTheme.monoStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700)
+                                      .copyWith(color: textMuted)),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text('TEMP',
+                                  style: AppTheme.monoStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700)
+                                      .copyWith(color: textMuted)),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text('HUM',
+                                  style: AppTheme.monoStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700)
+                                      .copyWith(color: textMuted)),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text('eCO₂',
+                                  style: AppTheme.monoStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700)
+                                      .copyWith(color: textMuted)),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text('AQI',
+                                  style: AppTheme.monoStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700)
+                                      .copyWith(color: textMuted)),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 16),
+                        ...records.map((r) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: Text(
+                                    _formatTime(r.timestamp),
+                                    style: AppTheme.monoStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w500,
+                                    ).copyWith(color: textSecondary),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    r.temperature != null
+                                        ? '${r.temperature!.toStringAsFixed(1)}°'
+                                        : '--',
+                                    style: AppTheme.monoStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ).copyWith(color: textPrimary),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    r.humidity != null
+                                        ? '${r.humidity!.round()}%'
+                                        : '--',
+                                    style: AppTheme.monoStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ).copyWith(color: textPrimary),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    r.eco2 != null ? '${r.eco2}' : '--',
+                                    style: AppTheme.monoStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ).copyWith(color: textPrimary),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Row(
+                                    children: [
+                                      if (r.aqi != null)
+                                        Container(
+                                          width: 6,
+                                          height: 6,
+                                          margin:
+                                              const EdgeInsets.only(right: 4),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.forAqi(r.aqi!),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      Text(
+                                        r.aqi != null ? '${r.aqi}' : '--',
+                                        style: AppTheme.monoStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                        ).copyWith(
+                                          color: r.aqi != null
+                                              ? AppColors.forAqi(r.aqi!)
+                                              : textMuted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                        const SizedBox(height: 16),
+                        DetaHubButton(
+                          label: 'Manage & Export Data',
+                          icon: Icons.storage_outlined,
+                          outlined: true,
+                          expand: true,
+                          onPressed: () => context.push(
+                            '/settings/storage?deviceId=${device.id}',
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }

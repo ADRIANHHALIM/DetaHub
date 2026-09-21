@@ -17,9 +17,14 @@ import '../../features/device/screens/device_detail_screen.dart';
 import '../../features/device/screens/device_form_screen.dart';
 import '../../features/device/screens/device_list_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/product/screens/lat_product_detail_screen.dart';
 import '../../features/product/screens/products_screen.dart';
 import '../../features/sector/screens/locations_screen.dart';
+import '../../features/settings/screens/appearance_screen.dart';
+import '../../features/settings/screens/backup_screen.dart';
+import '../../features/settings/screens/restore_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/settings/screens/storage_screen.dart';
 import '../widgets/floating_nav_bar.dart';
 
 // ---------------------------------------------------------------------------
@@ -48,6 +53,39 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           );
         },
       ),
+      GoRoute(
+        path: '/products/lat',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: LatProductDetailScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/settings/appearance',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: AppearanceScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/settings/backup',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: BackupScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/settings/restore',
+        pageBuilder: (context, state) => const MaterialPage(
+          child: RestoreScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/settings/storage',
+        pageBuilder: (context, state) {
+          final deviceId = state.uri.queryParameters['deviceId'];
+          return MaterialPage(
+            child: StorageScreen(initialDeviceId: deviceId),
+          );
+        },
+      ),
 
       // Shell route provides the persistent bottom navigation bar.
       ShellRoute(
@@ -58,23 +96,27 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // Tab 0: Home dashboard
           GoRoute(
             path: '/home',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: HomeScreen(),
+            pageBuilder: (context, state) => _smoothTabPage(
+              key: state.pageKey,
+              child: const HomeScreen(),
             ),
           ),
 
           // Tab 1: Product catalogue. Locations remain contextual navigation.
           GoRoute(
             path: '/products',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: ProductsScreen()),
+            pageBuilder: (context, state) => _smoothTabPage(
+              key: state.pageKey,
+              child: const ProductsScreen(),
+            ),
           ),
 
           // Secondary hierarchy navigation.
           GoRoute(
             path: '/locations',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: LocationsScreen(),
+            pageBuilder: (context, state) => _smoothTabPage(
+              key: state.pageKey,
+              child: const LocationsScreen(),
             ),
             routes: [
               // Sub-Sector / Area → Device list drill-down
@@ -110,8 +152,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           // Tab 2: Settings
           GoRoute(
             path: '/settings',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: SettingsScreen(),
+            pageBuilder: (context, state) => _smoothTabPage(
+              key: state.pageKey,
+              child: const SettingsScreen(),
             ),
           ),
         ],
@@ -119,6 +162,41 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+Page<dynamic> _smoothTabPage({
+  required LocalKey key,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: key,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 280),
+    reverseTransitionDuration: const Duration(milliseconds: 240),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final fadeIn = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
+      final fadeOut = CurvedAnimation(
+        parent: secondaryAnimation,
+        curve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: Tween<double>(begin: 1.0, end: 0.0).animate(fadeOut),
+        child: FadeTransition(
+          opacity: fadeIn,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0.0, 0.02),
+              end: Offset.zero,
+            ).animate(fadeIn),
+            child: child,
+          ),
+        ),
+      );
+    },
+  );
+}
 
 // ---------------------------------------------------------------------------
 // App shell with bottom navigation bar

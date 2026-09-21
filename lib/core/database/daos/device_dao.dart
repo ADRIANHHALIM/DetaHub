@@ -41,6 +41,18 @@ class DeviceDao extends DatabaseAccessor<AppDatabase> with _$DeviceDaoMixin {
       (select(devices)..where((d) => d.id.equals(deviceId)))
           .watchSingleOrNull();
 
+  /// One-shot fetch of all devices.
+  Future<List<Device>> getAllDevices() =>
+      (select(devices)..orderBy([(d) => OrderingTerm.asc(d.createdAt)])).get();
+
+  /// Counts total devices registered.
+  Future<int> countAllDevices() async {
+    final countExpr = devices.id.count();
+    final row =
+        await (selectOnly(devices)..addColumns([countExpr])).getSingleOrNull();
+    return row?.read(countExpr) ?? 0;
+  }
+
   // --- Write ---
 
   /// Inserts a new device or replaces it if the same [id] already exists.
