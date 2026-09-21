@@ -5,7 +5,6 @@
 // Follows "Neutral by default. Color only communicates meaning."
 
 import 'dart:async';
-import 'dart:math';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -43,18 +42,15 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   final List<double> _humidityHistory = [];
   final List<double> _eco2History = [];
   final List<double> _tvocHistory = [];
-  Timer? _perSecondTimer;
   Timer? _periodicPollTimer;
 
   @override
   void initState() {
     super.initState();
-    _seedInitialHistories();
-    _startPerSecondTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pollLive();
     });
-    _periodicPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _periodicPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (mounted && !_fetchingLive) {
         _pollLive();
       }
@@ -63,92 +59,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
   @override
   void dispose() {
-    _perSecondTimer?.cancel();
     _periodicPollTimer?.cancel();
     super.dispose();
-  }
-
-  void _seedInitialHistories() {
-    final baseTemp = _liveData?.temperature ?? 24.8;
-    final baseHum = _liveData?.humidity ?? 58.2;
-    final baseEco2 = (_liveData?.eco2 ?? 480).toDouble();
-    final baseTvoc = (_liveData?.tvoc ?? 115).toDouble();
-
-    final rng = Random(42);
-    _tempHistory.clear();
-    _humidityHistory.clear();
-    _eco2History.clear();
-    _tvocHistory.clear();
-
-    double t = baseTemp - 0.25;
-    double h = baseHum + 0.35;
-    double e = baseEco2 - 4.0;
-    double v = baseTvoc - 2.5;
-
-    for (int i = 0; i < 24; i++) {
-      t += (rng.nextDouble() - 0.48) * 0.05;
-      h += (rng.nextDouble() - 0.50) * 0.08;
-      e += (rng.nextDouble() - 0.49) * 1.4;
-      v += (rng.nextDouble() - 0.49) * 0.7;
-
-      _tempHistory.add(double.parse(t.toStringAsFixed(2)));
-      _humidityHistory.add(double.parse(h.toStringAsFixed(2)));
-      _eco2History.add(double.parse(e.toStringAsFixed(1)));
-      _tvocHistory.add(double.parse(v.toStringAsFixed(1)));
-    }
-    _tempHistory.add(baseTemp);
-    _humidityHistory.add(baseHum);
-    _eco2History.add(baseEco2);
-    _tvocHistory.add(baseTvoc);
-  }
-
-  void _startPerSecondTimer() {
-    _perSecondTimer?.cancel();
-    _perSecondTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-
-      final rng = Random();
-      final targetTemp = _liveData?.temperature ?? 24.8;
-      final targetHum = _liveData?.humidity ?? 58.2;
-      final targetEco2 = (_liveData?.eco2 ?? 480).toDouble();
-      final targetTvoc = (_liveData?.tvoc ?? 115).toDouble();
-
-      final lastTemp =
-          _tempHistory.isNotEmpty ? _tempHistory.last : targetTemp;
-      final lastHum =
-          _humidityHistory.isNotEmpty ? _humidityHistory.last : targetHum;
-      final lastEco2 =
-          _eco2History.isNotEmpty ? _eco2History.last : targetEco2;
-      final lastTvoc =
-          _tvocHistory.isNotEmpty ? _tvocHistory.last : targetTvoc;
-
-      final nextTemp = double.parse(
-          (lastTemp + (targetTemp - lastTemp) * 0.12 + (rng.nextDouble() - 0.5) * 0.08)
-              .toStringAsFixed(2));
-      final nextHum = double.parse(
-          (lastHum + (targetHum - lastHum) * 0.12 + (rng.nextDouble() - 0.5) * 0.12)
-              .toStringAsFixed(2));
-      final nextEco2 = double.parse(
-          (lastEco2 + (targetEco2 - lastEco2) * 0.12 + (rng.nextDouble() - 0.5) * 1.6)
-              .toStringAsFixed(1));
-      final nextTvoc = double.parse(
-          (lastTvoc + (targetTvoc - lastTvoc) * 0.12 + (rng.nextDouble() - 0.5) * 0.9)
-              .toStringAsFixed(1));
-
-      setState(() {
-        _tempHistory.add(nextTemp);
-        if (_tempHistory.length > 25) _tempHistory.removeAt(0);
-
-        _humidityHistory.add(nextHum);
-        if (_humidityHistory.length > 25) _humidityHistory.removeAt(0);
-
-        _eco2History.add(nextEco2);
-        if (_eco2History.length > 25) _eco2History.removeAt(0);
-
-        _tvocHistory.add(nextTvoc);
-        if (_tvocHistory.length > 25) _tvocHistory.removeAt(0);
-      });
-    });
   }
 
   Future<void> _pollLive() async {
