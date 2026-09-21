@@ -5,7 +5,6 @@
 // Follows "Neutral by default. Color only communicates meaning."
 
 import 'dart:async';
-import 'dart:math';
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -14,6 +13,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/daos/device_dao.dart';
+import '../../../core/database/daos/telemetry_dao.dart';
 import '../../../core/network/models/live_telemetry.dart';
 import '../../../core/network/network_error.dart';
 import '../../../core/network/providers/network_providers.dart';
@@ -38,23 +38,21 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   LiveTelemetry? _liveData;
   bool _fetchingLive = false;
   String? _fetchError;
+  ConnectionStatus _connectionStatus = ConnectionStatus.checking;
 
   final List<double> _tempHistory = [];
   final List<double> _humidityHistory = [];
   final List<double> _eco2History = [];
   final List<double> _tvocHistory = [];
-  Timer? _perSecondTimer;
   Timer? _periodicPollTimer;
 
   @override
   void initState() {
     super.initState();
-    _seedInitialHistories();
-    _startPerSecondTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _pollLive();
     });
-    _periodicPollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _periodicPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (mounted && !_fetchingLive) {
         _pollLive();
       }
@@ -63,92 +61,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
   @override
   void dispose() {
-    _perSecondTimer?.cancel();
     _periodicPollTimer?.cancel();
     super.dispose();
-  }
-
-  void _seedInitialHistories() {
-    final baseTemp = _liveData?.temperature ?? 24.8;
-    final baseHum = _liveData?.humidity ?? 58.2;
-    final baseEco2 = (_liveData?.eco2 ?? 480).toDouble();
-    final baseTvoc = (_liveData?.tvoc ?? 115).toDouble();
-
-    final rng = Random(42);
-    _tempHistory.clear();
-    _humidityHistory.clear();
-    _eco2History.clear();
-    _tvocHistory.clear();
-
-    double t = baseTemp - 0.25;
-    double h = baseHum + 0.35;
-    double e = baseEco2 - 4.0;
-    double v = baseTvoc - 2.5;
-
-    for (int i = 0; i < 24; i++) {
-      t += (rng.nextDouble() - 0.48) * 0.05;
-      h += (rng.nextDouble() - 0.50) * 0.08;
-      e += (rng.nextDouble() - 0.49) * 1.4;
-      v += (rng.nextDouble() - 0.49) * 0.7;
-
-      _tempHistory.add(double.parse(t.toStringAsFixed(2)));
-      _humidityHistory.add(double.parse(h.toStringAsFixed(2)));
-      _eco2History.add(double.parse(e.toStringAsFixed(1)));
-      _tvocHistory.add(double.parse(v.toStringAsFixed(1)));
-    }
-    _tempHistory.add(baseTemp);
-    _humidityHistory.add(baseHum);
-    _eco2History.add(baseEco2);
-    _tvocHistory.add(baseTvoc);
-  }
-
-  void _startPerSecondTimer() {
-    _perSecondTimer?.cancel();
-    _perSecondTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-
-      final rng = Random();
-      final targetTemp = _liveData?.temperature ?? 24.8;
-      final targetHum = _liveData?.humidity ?? 58.2;
-      final targetEco2 = (_liveData?.eco2 ?? 480).toDouble();
-      final targetTvoc = (_liveData?.tvoc ?? 115).toDouble();
-
-      final lastTemp =
-          _tempHistory.isNotEmpty ? _tempHistory.last : targetTemp;
-      final lastHum =
-          _humidityHistory.isNotEmpty ? _humidityHistory.last : targetHum;
-      final lastEco2 =
-          _eco2History.isNotEmpty ? _eco2History.last : targetEco2;
-      final lastTvoc =
-          _tvocHistory.isNotEmpty ? _tvocHistory.last : targetTvoc;
-
-      final nextTemp = double.parse(
-          (lastTemp + (targetTemp - lastTemp) * 0.12 + (rng.nextDouble() - 0.5) * 0.08)
-              .toStringAsFixed(2));
-      final nextHum = double.parse(
-          (lastHum + (targetHum - lastHum) * 0.12 + (rng.nextDouble() - 0.5) * 0.12)
-              .toStringAsFixed(2));
-      final nextEco2 = double.parse(
-          (lastEco2 + (targetEco2 - lastEco2) * 0.12 + (rng.nextDouble() - 0.5) * 1.6)
-              .toStringAsFixed(1));
-      final nextTvoc = double.parse(
-          (lastTvoc + (targetTvoc - lastTvoc) * 0.12 + (rng.nextDouble() - 0.5) * 0.9)
-              .toStringAsFixed(1));
-
-      setState(() {
-        _tempHistory.add(nextTemp);
-        if (_tempHistory.length > 25) _tempHistory.removeAt(0);
-
-        _humidityHistory.add(nextHum);
-        if (_humidityHistory.length > 25) _humidityHistory.removeAt(0);
-
-        _eco2History.add(nextEco2);
-        if (_eco2History.length > 25) _eco2History.removeAt(0);
-
-        _tvocHistory.add(nextTvoc);
-        if (_tvocHistory.length > 25) _tvocHistory.removeAt(0);
-      });
-    });
   }
 
   Future<void> _pollLive() async {
@@ -169,22 +83,65 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
     switch (result) {
       case Ok(:final value):
+        await ref.read(telemetryDaoProvider).batchInsertRecords([
+          TelemetryRecordsCompanion.insert(
+            deviceId: deviceWithLoc.device.id,
+            timestamp: value.timestamp,
+            temperature: Value(value.temperature),
+            humidity: Value(value.humidity),
+            eco2: Value(value.eco2),
+            tvoc: Value(value.tvoc),
+            aqi: Value(value.aqi),
+          ),
+        ]);
+        await ref
+            .read(deviceDaoProvider)
+            .updateLastSeen(deviceWithLoc.device.id, DateTime.now());
+        if (!mounted) return;
         setState(() {
           _liveData = value;
           _fetchingLive = false;
+          _connectionStatus = ConnectionStatus.online;
+          _appendRealReading(value);
         });
-      case Err():
+      case Err(:final error):
         setState(() {
           _fetchingLive = false;
-          _fetchError = 'Device unreachable over local network.';
+          _connectionStatus = ConnectionStatus.offline;
+          _fetchError = _networkErrorMessage(error);
         });
     }
   }
+
+  void _appendRealReading(LiveTelemetry value) {
+    void append(List<double> target, num? reading) {
+      if (reading == null) return;
+      target.add(reading.toDouble());
+      if (target.length > 25) target.removeAt(0);
+    }
+
+    append(_tempHistory, value.temperature);
+    append(_humidityHistory, value.humidity);
+    append(_eco2History, value.eco2);
+    append(_tvocHistory, value.tvoc);
+  }
+
+  String _networkErrorMessage(NetworkError error) => switch (error) {
+        TimeoutError() ||
+        UnreachableError() =>
+          'Device tidak dapat dihubungi. Pastikan ponsel dan perangkat berada di jaringan Wi-Fi yang sama.',
+        NotFoundError() => 'Endpoint data perangkat tidak tersedia.',
+        ParseError() => 'Data dari perangkat tidak dapat dibaca.',
+        UnknownNetworkError() => 'Koneksi perangkat gagal. Coba lagi.',
+      };
 
   @override
   Widget build(BuildContext context) {
     final deviceAsync =
         ref.watch(watchDeviceWithLocationProvider(widget.deviceId));
+    final latestRecord = ref
+        .watch(watchLatestTelemetryRecordProvider(widget.deviceId))
+        .valueOrNull;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
@@ -224,7 +181,14 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
         }
 
         final device = deviceWithLoc.device;
-        final aqiValue = _liveData?.aqi ?? 1;
+        final temperature = _liveData?.temperature ?? latestRecord?.temperature;
+        final humidity = _liveData?.humidity ?? latestRecord?.humidity;
+        final eco2 = _liveData?.eco2 ?? latestRecord?.eco2;
+        final tvoc = _liveData?.tvoc ?? latestRecord?.tvoc;
+        final aqiValue = _liveData?.aqi ?? latestRecord?.aqi;
+        final lastTimestamp = _liveData?.timestamp ?? latestRecord?.timestamp;
+        final isLive =
+            _connectionStatus == ConnectionStatus.online && _liveData != null;
 
         return Scaffold(
           appBar: AppBar(
@@ -319,7 +283,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                         ],
                       ),
                     ),
-                    const ConnectionPill(status: ConnectionStatus.online),
+                    ConnectionPill(status: _connectionStatus),
                   ],
                 ),
               ),
@@ -343,7 +307,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                           'Air quality',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        AqiBadge(aqi: aqiValue),
+                        if (aqiValue != null) AqiBadge(aqi: aqiValue),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -352,7 +316,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          '$aqiValue',
+                          aqiValue?.toString() ?? '--',
                           style: AppTheme.monoStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.w700,
@@ -360,18 +324,21 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          AppColors.labelForAqi(aqiValue),
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: textMuted),
-                        ),
+                        if (aqiValue != null)
+                          Text(
+                            AppColors.labelForAqi(aqiValue),
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(color: textMuted),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      _aqiDescription(aqiValue),
+                      aqiValue == null
+                          ? 'Waiting for an AQI reading from the device.'
+                          : _aqiDescription(aqiValue),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: textSecondary,
                           ),
@@ -382,7 +349,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
               const SizedBox(height: 16),
 
-              // Environmental Telemetry Grid (Neutral by default, live 1s stream)
+              // Environmental telemetry — only values received from hardware.
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -402,14 +369,16 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                         Container(
                           width: 5,
                           height: 5,
-                          decoration: const BoxDecoration(
-                            color: AppColors.aqiGood,
+                          decoration: BoxDecoration(
+                            color: _connectionStatus == ConnectionStatus.online
+                                ? AppColors.aqiGood
+                                : textMuted,
                             shape: BoxShape.circle,
                           ),
                         ),
                         const SizedBox(width: 5),
                         Text(
-                          '1s stream',
+                          'Live · 3s poll',
                           style: AppTheme.monoStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
@@ -427,26 +396,24 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                   Expanded(
                     child: MetricCard(
                       label: 'Temperature',
-                      value: _tempHistory.isNotEmpty
-                          ? _tempHistory.last.toStringAsFixed(1)
-                          : (_liveData?.temperature?.toStringAsFixed(1) ??
-                              '24.8'),
+                      value: temperature?.toStringAsFixed(1) ?? '--',
                       unit: '°C',
-                      history: _tempHistory,
+                      history: _tempHistory.length >= 2 ? _tempHistory : null,
                       chartColor: AppColors.metricTemperature,
+                      trendLabel: '3s',
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: MetricCard(
                       label: 'Humidity',
-                      value: _humidityHistory.isNotEmpty
-                          ? _humidityHistory.last.toStringAsFixed(1)
-                          : (_liveData?.humidity?.toStringAsFixed(1) ??
-                              '58.2'),
+                      value: humidity?.toStringAsFixed(1) ?? '--',
                       unit: '%',
-                      history: _humidityHistory,
+                      history: _humidityHistory.length >= 2
+                          ? _humidityHistory
+                          : null,
                       chartColor: AppColors.metricHumidity,
+                      trendLabel: '3s',
                     ),
                   ),
                 ],
@@ -457,28 +424,47 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                   Expanded(
                     child: MetricCard(
                       label: 'eCO₂',
-                      value: _eco2History.isNotEmpty
-                          ? '${_eco2History.last.round()}'
-                          : '${_liveData?.eco2 ?? 480}',
-                      unit: 'PPM',
-                      history: _eco2History,
+                      value: eco2?.toString() ?? '--',
+                      unit: 'ppm',
+                      history: _eco2History.length >= 2 ? _eco2History : null,
                       chartColor: AppColors.metricEco2,
+                      trendLabel: '3s',
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: MetricCard(
                       label: 'TVOC',
-                      value: _tvocHistory.isNotEmpty
-                          ? '${_tvocHistory.last.round()}'
-                          : '${_liveData?.tvoc ?? 115}',
-                      unit: 'PPB',
-                      history: _tvocHistory,
+                      value: tvoc?.toString() ?? '--',
+                      unit: 'ppb',
+                      history: _tvocHistory.length >= 2 ? _tvocHistory : null,
                       chartColor: AppColors.metricTvoc,
+                      trendLabel: '3s',
                     ),
                   ),
                 ],
               ),
+
+              const SizedBox(height: 12),
+              Text(
+                lastTimestamp == null
+                    ? 'Waiting for the first reading.'
+                    : '${isLive ? 'Last update' : 'Last received'}: ${_formatTimestamp(lastTimestamp)}',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: textSecondary),
+              ),
+              if (_tempHistory.length < 2) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Recent trend will appear after two real readings.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: textMuted),
+                ),
+              ],
 
               const SizedBox(height: 24),
 
@@ -581,6 +567,13 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
         5 => 'Health alert: risk of more serious health effects for everyone.',
         _ => 'Air quality reading available.',
       };
+
+  String _formatTimestamp(DateTime timestamp) {
+    final local = timestamp.toLocal();
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    return '${local.year}-${twoDigits(local.month)}-${twoDigits(local.day)} '
+        '${twoDigits(local.hour)}:${twoDigits(local.minute)}:${twoDigits(local.second)}';
+  }
 
   Future<void> _showRenameDialog(BuildContext context, Device device) async {
     final controller = TextEditingController(text: device.name);

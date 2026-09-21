@@ -1,7 +1,7 @@
 // lib/features/device/screens/device_form_screen.dart
 //
 // Form screen for registering a new Device Node.
-// User enters Base URL → taps "Test Connection" → GET /api/manifest is called.
+// User enters a local address → taps "Test Connection".
 // On success the Device ID and product type are auto-filled from the manifest.
 // Tapping "Save" calls DeviceDao.upsertDevice().
 
@@ -45,7 +45,7 @@ class _DeviceFormScreenState extends ConsumerState<DeviceFormScreen> {
   }
 
   // ---------------------------------------------------------------------------
-  // Test Connection — calls GET /api/manifest
+  // Test Connection — `/api/manifest`, then `/data` for LAT test firmware.
   // ---------------------------------------------------------------------------
 
   Future<void> _testConnection() async {
@@ -93,9 +93,8 @@ class _DeviceFormScreenState extends ConsumerState<DeviceFormScreen> {
         UnreachableError() =>
           'Cannot reach device. Verify the IP address and that the device is powered on.',
         NotFoundError() =>
-          '/api/manifest not found. This device may not be a DetaLab product.',
-        ParseError(:final detail) =>
-          'Unexpected response format: $detail',
+          'Device data was not found. Check the local address and Wi-Fi network.',
+        ParseError(:final detail) => 'Unexpected response format: $detail',
         UnknownNetworkError(:final cause) => 'Error: $cause',
       };
 
@@ -170,8 +169,9 @@ class _DeviceFormScreenState extends ConsumerState<DeviceFormScreen> {
               keyboardType: TextInputType.url,
               autocorrect: false,
               decoration: const InputDecoration(
-                labelText: 'Base URL',
+                labelText: 'Device Address',
                 hintText: 'http://192.168.1.50',
+                helperText: 'Enter the local address shown by the device.',
               ),
               validator: (v) {
                 if (v == null || v.trim().isEmpty || v.trim() == 'http://') {
@@ -220,8 +220,8 @@ class _DeviceFormScreenState extends ConsumerState<DeviceFormScreen> {
                 ),
                 child: Text(
                   _handshakeError!,
-                  style: textTheme.bodySmall
-                      ?.copyWith(color: AppColors.aqiPoor),
+                  style:
+                      textTheme.bodySmall?.copyWith(color: AppColors.aqiPoor),
                 ),
               ),
             ],
@@ -246,7 +246,9 @@ class _DeviceFormScreenState extends ConsumerState<DeviceFormScreen> {
                 hintText: 'e.g. LAT Lab IoT Lt.3',
               ),
               validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'Name cannot be empty.';
+                if (v == null || v.trim().isEmpty) {
+                  return 'Name cannot be empty.';
+                }
                 return null;
               },
             ),
@@ -305,8 +307,7 @@ class _ManifestPreview extends StatelessWidget {
           _ManifestRow(label: 'ID', value: manifest.deviceId),
           _ManifestRow(label: 'Type', value: manifest.productType),
           _ManifestRow(label: 'Firmware', value: manifest.firmwareVersion),
-          _ManifestRow(
-              label: 'Metrics', value: manifest.metrics.join(', ')),
+          _ManifestRow(label: 'Metrics', value: manifest.metrics.join(', ')),
         ],
       ),
     );

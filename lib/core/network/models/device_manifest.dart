@@ -4,6 +4,8 @@
 // The manifest is the first call made after a user enters a device URL —
 // it auto-fills the device ID, product type, and available metrics.
 
+import 'live_telemetry.dart';
+
 /// Parsed response from a device's /api/manifest endpoint.
 ///
 /// Example JSON:
@@ -46,6 +48,39 @@ class DeviceManifest {
               .toList() ??
           const [],
       uptime: json['uptime'] as int?,
+    );
+  }
+
+  /// Creates a local registration identity when a test firmware has no
+  /// `/api/manifest`, but has confirmed itself through `/data`.
+  factory DeviceManifest.fromLiveTelemetry(
+    LiveTelemetry telemetry,
+    String baseUrl,
+  ) {
+    final uri = Uri.tryParse(baseUrl);
+    final address =
+        uri?.hasPort == true ? '${uri!.host}-${uri.port}' : uri?.host;
+    final stableAddress = (address == null || address.isEmpty)
+        ? baseUrl.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-')
+        : address.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-');
+    final metrics = <String>[
+      if (telemetry.temperature != null) 'temperature',
+      if (telemetry.humidity != null) 'humidity',
+      if (telemetry.eco2 != null) 'eco2',
+      if (telemetry.tvoc != null) 'tvoc',
+      if (telemetry.aqi != null) 'aqi',
+    ];
+
+    return DeviceManifest(
+      deviceId: telemetry.deviceId?.trim().isNotEmpty == true
+          ? telemetry.deviceId!.trim()
+          : 'lat-$stableAddress',
+      productType: telemetry.productType?.trim().isNotEmpty == true
+          ? telemetry.productType!.trim()
+          : 'LAT',
+      firmwareVersion: 'unknown',
+      metrics: metrics,
+      uptime: telemetry.uptime,
     );
   }
 

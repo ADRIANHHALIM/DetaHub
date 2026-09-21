@@ -32,8 +32,7 @@ class DeviceApiService {
   Future<Result<DeviceManifest, NetworkError>> fetchManifest(
       String baseUrl) async {
     try {
-      final response =
-          await _dio.get('$baseUrl/api/manifest');
+      final response = await _dio.get('$baseUrl/api/manifest');
       final data = response.data;
 
       if (data is! Map<String, dynamic>) {
@@ -43,6 +42,9 @@ class DeviceApiService {
       final manifest = DeviceManifest.fromJson(data);
       return Ok(manifest);
     } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return _fetchManifestFromLive(baseUrl);
+      }
       return Err(_mapDioError(e, baseUrl));
     } on FormatException catch (e) {
       return Err(ParseError(e.message));
@@ -51,26 +53,42 @@ class DeviceApiService {
     }
   }
 
+  Future<Result<DeviceManifest, NetworkError>> _fetchManifestFromLive(
+      String baseUrl) async {
+    final result = await fetchLive(baseUrl);
+    return switch (result) {
+      Ok(:final value) => Ok(DeviceManifest.fromLiveTelemetry(value, baseUrl)),
+      Err(:final error) => Err(error),
+    };
+  }
+
   // ---------------------------------------------------------------------------
-  // GET /api/live
+  // GET /data, with GET /api/live as a legacy fallback
   // ---------------------------------------------------------------------------
 
   /// Fetches the latest real-time telemetry snapshot from the device.
   ///
-  /// Called on a periodic timer from the live dashboard (e.g., every 5s).
-  /// Returns the most recent sensor values — not a stream from the device.
-  Future<Result<LiveTelemetry, NetworkError>> fetchLive(
+  /// `/data` is the LAT firmware's primary endpoint. Older firmware may only
+  /// expose `/api/live`, which is tried only when `/data` returns HTTP 404.
+  Future<Result<LiveTelemetry, NetworkError>> fetchLive(String baseUrl) async {
+    try {
+      final response = await _dio.get('$baseUrl/data');
+      return _parseLiveResponse(response.data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return _fetchLegacyLive(baseUrl);
+      return Err(_mapDioError(e, baseUrl));
+    } on FormatException catch (e) {
+      return Err(ParseError(e.message));
+    } catch (e) {
+      return Err(UnknownNetworkError(e));
+    }
+  }
+
+  Future<Result<LiveTelemetry, NetworkError>> _fetchLegacyLive(
       String baseUrl) async {
     try {
       final response = await _dio.get('$baseUrl/api/live');
-      final data = response.data;
-
-      if (data is! Map<String, dynamic>) {
-        return const Err(ParseError('Live response is not a JSON object'));
-      }
-
-      final telemetry = LiveTelemetry.fromJson(data);
-      return Ok(telemetry);
+      return _parseLiveResponse(response.data);
     } on DioException catch (e) {
       return Err(_mapDioError(e, baseUrl));
     } on FormatException catch (e) {
@@ -78,6 +96,13 @@ class DeviceApiService {
     } catch (e) {
       return Err(UnknownNetworkError(e));
     }
+  }
+
+  Result<LiveTelemetry, NetworkError> _parseLiveResponse(dynamic data) {
+    if (data is! Map<String, dynamic>) {
+      return const Err(ParseError('Live response is not a JSON object'));
+    }
+    return Ok(LiveTelemetry.fromJson(data, receivedAt: DateTime.now()));
   }
 
   // ---------------------------------------------------------------------------
@@ -91,14 +116,10 @@ class DeviceApiService {
       DioExceptionType.sendTimeout ||
       DioExceptionType.receiveTimeout =>
         const TimeoutError(),
-
-      DioExceptionType.connectionError =>
-        UnreachableError(url),
-
+      DioExceptionType.connectionError => UnreachableError(url),
       DioExceptionType.badResponse => e.response?.statusCode == 404
           ? NotFoundError(url)
           : UnknownNetworkError(e),
-
       _ => UnknownNetworkError(e),
     };
   }

@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-enum ConnectionStatus { online, offline, checking }
+enum ConnectionStatus { online, offline, checking, unknown }
 
 /// A small pill badge indicating a device's connection status.
 ///
@@ -67,6 +67,11 @@ class _ConnectionPillState extends State<ConnectionPill>
           AppColors.aqiModerate.withValues(alpha: 0.12),
           AppColors.aqiModerate,
           'Checking',
+        ),
+      ConnectionStatus.unknown => (
+          Colors.transparent,
+          Theme.of(context).colorScheme.outline,
+          'Unknown',
         ),
     };
 
