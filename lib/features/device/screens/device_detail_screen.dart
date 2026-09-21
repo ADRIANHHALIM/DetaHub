@@ -13,6 +13,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/database/app_database.dart';
 import '../../../core/database/daos/device_dao.dart';
+import '../../../core/database/daos/telemetry_dao.dart';
 import '../../../core/network/models/live_telemetry.dart';
 import '../../../core/network/network_error.dart';
 import '../../../core/network/providers/network_providers.dart';
@@ -81,8 +82,35 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
     switch (result) {
       case Ok(:final value):
+        await ref.read(telemetryDaoProvider).batchInsertRecords([
+          TelemetryRecordsCompanion.insert(
+            deviceId: widget.deviceId,
+            timestamp: value.timestamp,
+            temperature: Value(value.temperature),
+            humidity: Value(value.humidity),
+            eco2: Value(value.eco2),
+            tvoc: Value(value.tvoc),
+            aqi: Value(value.aqi),
+          ),
+        ]);
         setState(() {
           _liveData = value;
+          if (value.temperature != null) {
+            _tempHistory.add(value.temperature!);
+            if (_tempHistory.length > 120) _tempHistory.removeAt(0);
+          }
+          if (value.humidity != null) {
+            _humidityHistory.add(value.humidity!);
+            if (_humidityHistory.length > 120) _humidityHistory.removeAt(0);
+          }
+          if (value.eco2 != null) {
+            _eco2History.add(value.eco2!.toDouble());
+            if (_eco2History.length > 120) _eco2History.removeAt(0);
+          }
+          if (value.tvoc != null) {
+            _tvocHistory.add(value.tvoc!.toDouble());
+            if (_tvocHistory.length > 120) _tvocHistory.removeAt(0);
+          }
           _fetchingLive = false;
         });
       case Err():
