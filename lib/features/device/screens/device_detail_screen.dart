@@ -164,7 +164,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
         }
 
         final device = deviceWithLoc.device;
-        final aqiValue = _liveData?.aqi ?? 1;
+        final aqiValue = _liveData?.aqi;
 
         return Scaffold(
           appBar: AppBar(
@@ -283,7 +283,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                           'Air quality',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        AqiBadge(aqi: aqiValue),
+                        if (aqiValue != null) AqiBadge(aqi: aqiValue),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -292,7 +292,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                       textBaseline: TextBaseline.alphabetic,
                       children: [
                         Text(
-                          '$aqiValue',
+                          aqiValue?.toString() ?? '--',
                           style: AppTheme.monoStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.w700,
@@ -301,7 +301,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          AppColors.labelForAqi(aqiValue),
+                          aqiValue != null ? AppColors.labelForAqi(aqiValue) : 'Waiting for data',
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
@@ -311,7 +311,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      _aqiDescription(aqiValue),
+                      aqiValue != null ? _aqiDescription(aqiValue) : 'Waiting for the first reading from your device.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: textSecondary,
                           ),
