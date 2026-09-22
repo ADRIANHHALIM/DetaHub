@@ -198,7 +198,19 @@ class LiveTelemetry {
         return dt.year >= 2020 ? dt : null;
       }
       final parsed = DateTime.tryParse(trimmed);
-      if (parsed != null && parsed.year >= 2020) return parsed;
+      if (parsed != null && parsed.year >= 2020) {
+        if (parsed.isUtc) return parsed;
+        return DateTime.utc(
+          parsed.year,
+          parsed.month,
+          parsed.day,
+          parsed.hour,
+          parsed.minute,
+          parsed.second,
+          parsed.millisecond,
+          parsed.microsecond,
+        );
+      }
     }
     return null;
   }

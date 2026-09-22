@@ -130,16 +130,19 @@ class DeviceSyncService {
 
     // 2. Filter CSV files and sort chronologically (oldest first)
     final csvFiles = allFiles
-        .where((f) => f.name.toLowerCase().endsWith('.csv'))
+        .where((f) => DeviceFile.normalizeFileName(f.name).endsWith('.csv'))
         .toList();
 
     csvFiles.sort((a, b) {
-      final da = a.date ?? DeviceFile.parseDateFromFileName(a.name);
-      final db = b.date ?? DeviceFile.parseDateFromFileName(b.name);
+      final da = DeviceFile.parseDateFromFileName(a.name) ?? a.date;
+      final db = DeviceFile.parseDateFromFileName(b.name) ?? b.date;
       if (da != null && db != null) {
         return da.compareTo(db);
       }
-      return a.name.compareTo(b.name);
+      if (da != null) return -1;
+      if (db != null) return 1;
+      return DeviceFile.normalizeFileName(a.name)
+          .compareTo(DeviceFile.normalizeFileName(b.name));
     });
 
     int filesProcessed = 0;
@@ -149,6 +152,7 @@ class DeviceSyncService {
     int totalRecordsInserted = 0;
     int totalRecordsIgnored = 0;
     int totalRecordsRejected = 0;
+    final preservedFiles = <String>[];
     final deletedFiles = <String>[];
     final failedDeletes = <String>[];
     final errors = <String>[];
@@ -179,6 +183,7 @@ class DeviceSyncService {
       final downloadResult = await _apiService.downloadFile(baseUrl, file.name);
       if (downloadResult.isErr) {
         filesFailed++;
+        preservedFiles.add(file.name);
         errors.add('Failed to download ${file.name}: ${downloadResult.error}');
         continue;
       }
@@ -201,7 +206,8 @@ class DeviceSyncService {
 
       final validRecords = parseResult.validRecords;
 
-      // 3c. Persist in bounded transactional chunks
+      // 3c. Persist valid records in bounded transactional chunks (COUNT before/after optimization)
+      bool persistenceFailed = false;
       if (validRecords.isNotEmpty) {
         _updateState(
           deviceId,
@@ -213,38 +219,38 @@ class DeviceSyncService {
           ),
         );
 
-        bool persistenceFailed = false;
-        const chunkSize = 500;
-        final chunks = TelemetryCsvParser.chunkList(validRecords, chunkSize);
-
-        for (final chunk in chunks) {
-          try {
-            final companions = chunk.map((r) => r.toCompanion(deviceId)).toList();
-            final inserted = await _telemetryDao.batchInsertRecordsWithCount(
-              deviceId,
-              companions,
-            );
-            totalRecordsInserted += inserted;
-            totalRecordsIgnored += (chunk.length - inserted);
-          } catch (e) {
-            persistenceFailed = true;
-            errors.add('Database error persisting ${file.name}: $e');
-            break;
-          }
-        }
-
-        // CRITICAL DATA-SAFETY RULE:
-        // If SQLite persistence fails, DO NOT delete the ESP32 file!
-        if (persistenceFailed) {
+        try {
+          final companions =
+              validRecords.map((r) => r.toCompanion(deviceId)).toList();
+          final inserted = await _telemetryDao.insertFileRecordsWithCount(
+            deviceId,
+            companions,
+            chunkSize: 500,
+          );
+          totalRecordsInserted += inserted;
+          totalRecordsIgnored += (validRecords.length - inserted);
+        } catch (e) {
+          persistenceFailed = true;
           filesFailed++;
+          preservedFiles.add(file.name);
+          errors.add('Database error persisting ${file.name}: $e');
           continue;
         }
       }
 
       filesProcessed++;
 
-      // 3d. Delete acknowledged file ONLY if eligible (historical & not active)
-      if (canDelete) {
+      // 3d. Safe acknowledgement check:
+      // A file is eligible for deletion ONLY if ALL of the following are true:
+      // 1. canDelete (historical, strictly before today, not activeFileName)
+      // 2. Zero invalid records reported by parser (invalidCount == 0)
+      // 3. SQLite persistence succeeded without error (!persistenceFailed)
+      //
+      // If ANY row is invalid: valid records are persisted, but source file MUST be preserved!
+      final isSafeToDelete =
+          canDelete && !persistenceFailed && parseResult.invalidCount == 0;
+
+      if (isSafeToDelete) {
         _updateState(
           deviceId,
           SyncDeleting(
@@ -258,20 +264,34 @@ class DeviceSyncService {
         if (deleteResult.isOk) {
           deletedFiles.add(file.name);
         } else {
-          // Deletion failed on ESP32, but SQLite data is safe!
-          // Next reconciliation will simply re-sync and ignore duplicates.
+          // Deletion failed or unconfirmed (e.g. 404/500/timeout):
+          // SQLite data is safe, mark delete failed, preserve source for retry
           failedDeletes.add(file.name);
-          errors.add('Failed to delete ${file.name} from ESP32: ${deleteResult.error}');
+          preservedFiles.add(file.name);
+          errors.add(
+              'Failed to delete ${file.name} from ESP32: ${deleteResult.error}');
         }
       } else {
-        filesSkipped++;
+        // File preserved for safety (e.g. active file, undated, or contained invalid records)
+        preservedFiles.add(file.name);
+        if (!canDelete) {
+          filesSkipped++;
+        }
       }
     }
 
     final completedAt = DateTime.now();
-    final status = filesFailed > 0
-        ? SyncStatus.partial
-        : SyncStatus.success;
+    final SyncStatus status;
+    if (filesFailed > 0 && filesProcessed == 0 && totalRecordsInserted == 0) {
+      status = SyncStatus.failed;
+    } else if (filesFailed > 0 ||
+        failedDeletes.isNotEmpty ||
+        totalRecordsRejected > 0 ||
+        preservedFiles.isNotEmpty) {
+      status = SyncStatus.partial;
+    } else {
+      status = SyncStatus.success;
+    }
 
     final result = SyncResult(
       deviceId: deviceId,
@@ -285,6 +305,7 @@ class DeviceSyncService {
       recordsInserted: totalRecordsInserted,
       recordsIgnored: totalRecordsIgnored,
       recordsRejected: totalRecordsRejected,
+      preservedFiles: preservedFiles,
       deletedFiles: deletedFiles,
       failedDeletes: failedDeletes,
       status: status,

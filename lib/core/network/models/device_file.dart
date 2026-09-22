@@ -16,19 +16,32 @@ class DeviceFile {
     this.date,
   });
 
+  /// Normalizes a filename to a canonical representation by trimming whitespace,
+  /// stripping leading slashes/backslashes, and converting to lowercase.
+  /// Example: " /data_2026-09-21.csv " -> "data_2026-09-21.csv"
+  static String normalizeFileName(String fileName) {
+    return fileName.trim().replaceAll(RegExp(r'^[\\\/]+'), '').toLowerCase();
+  }
+
   /// Extracts the date from standard DetaLab filename format `data_YYYY-MM-DD.csv`
-  /// or ISO-like filename prefixes.
+  /// or ISO-like filename prefixes. Returns null if date cannot be strictly proven.
   static DateTime? parseDateFromFileName(String fileName) {
-    final clean = fileName.trim().toLowerCase();
-    // Pattern: data_2026-09-21.csv or 2026-09-21.csv
-    final regex = RegExp(r'(?:data_)?(\d{4})-(\d{2})-(\d{2})');
+    final clean = normalizeFileName(fileName);
+    // Pattern: data_YYYY-MM-DD.csv or YYYY-MM-DD.csv
+    final regex = RegExp(r'^(?:data_)?(\d{4})-(\d{2})-(\d{2})(?:\.csv)?$');
     final match = regex.firstMatch(clean);
     if (match != null) {
       final year = int.tryParse(match.group(1)!);
       final month = int.tryParse(match.group(2)!);
       final day = int.tryParse(match.group(3)!);
       if (year != null && month != null && day != null) {
-        return DateTime.utc(year, month, day);
+        if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+        if (year < 2020 || year > 2100) return null;
+        final parsed = DateTime.utc(year, month, day);
+        // Strict calendar check (prevents leap/month overflow e.g. Feb 30)
+        if (parsed.year == year && parsed.month == month && parsed.day == day) {
+          return parsed;
+        }
       }
     }
     return null;
@@ -38,25 +51,30 @@ class DeviceFile {
   ///
   /// A file is considered active if:
   /// 1. Its name matches the device's currently active file reported via `/data` ([activeFileName]).
-  /// 2. Its parsed date matches today's date (local or UTC).
+  /// 2. Its parsed date matches today's date (local or UTC) or is in the future.
   /// 3. It lacks date information and cannot be proven historical (conservative safety).
   bool isActiveLog({String? activeFileName, DateTime? referenceTime}) {
-    if (activeFileName != null &&
-        activeFileName.isNotEmpty &&
-        name.toLowerCase() == activeFileName.toLowerCase()) {
+    final normName = normalizeFileName(name);
+
+    if (activeFileName != null && activeFileName.trim().isNotEmpty) {
+      if (normName == normalizeFileName(activeFileName)) {
+        return true;
+      }
+    }
+
+    final fileDate = parseDateFromFileName(name) ?? date;
+    if (fileDate == null) {
+      // Conservative safety: undated files are treated as potentially active/uncertain
       return true;
     }
 
-    final fileDate = date ?? parseDateFromFileName(name);
-    if (fileDate != null) {
-      final now = referenceTime ?? DateTime.now();
-      final todayUtc = DateTime.utc(now.year, now.month, now.day);
-      final todayLocal = DateTime(now.year, now.month, now.day);
-      final fDateLocal = DateTime(fileDate.year, fileDate.month, fileDate.day);
+    final now = referenceTime ?? DateTime.now();
+    final todayUtc = DateTime.utc(now.year, now.month, now.day);
+    final fDateUtc = DateTime.utc(fileDate.year, fileDate.month, fileDate.day);
 
-      if (fileDate == todayUtc || fDateLocal == todayLocal) {
-        return true;
-      }
+    // If file date is today or future, it is active
+    if (!fDateUtc.isBefore(todayUtc)) {
+      return true;
     }
 
     return false;
@@ -64,13 +82,41 @@ class DeviceFile {
 
   /// Evaluates whether this file is safe to delete after local SQLite persistence.
   ///
-  /// CRITICAL: Non-CSV files, active logs, and files from today are NEVER eligible.
+  /// CRITICAL: A file is eligible for deletion ONLY if ALL of the following are true:
+  /// 1. Filename ends with .csv
+  /// 2. Filename contains a valid, parseable historical date
+  /// 3. File date is strictly before reference/current day
+  /// 4. Filename does NOT match activeFileName
+  ///
+  /// If the date cannot be proven (e.g. log.csv, backup.csv, malformed-date.csv): NEVER DELETE.
   bool isEligibleForDeletion({String? activeFileName, DateTime? referenceTime}) {
-    if (!name.toLowerCase().endsWith('.csv')) return false;
-    return !isActiveLog(
-      activeFileName: activeFileName,
-      referenceTime: referenceTime,
-    );
+    if (!normalizeFileName(name).endsWith('.csv')) return false;
+
+    // Rule 2: Filename MUST contain a valid, parseable historical date.
+    // Do not infer date from secondary sources if filename itself cannot prove it.
+    final fileDate = parseDateFromFileName(name);
+    if (fileDate == null) {
+      // Cannot prove date -> NEVER DELETE
+      return false;
+    }
+
+    final now = referenceTime ?? DateTime.now();
+    final todayUtc = DateTime.utc(now.year, now.month, now.day);
+    final fDateUtc = DateTime.utc(fileDate.year, fileDate.month, fileDate.day);
+
+    // Rule 3: Must be strictly before reference/current day
+    if (!fDateUtc.isBefore(todayUtc)) {
+      return false;
+    }
+
+    // Rule 4: Must not match active file
+    if (activeFileName != null && activeFileName.trim().isNotEmpty) {
+      if (normalizeFileName(name) == normalizeFileName(activeFileName)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   /// Parses a single file entry from map or string.

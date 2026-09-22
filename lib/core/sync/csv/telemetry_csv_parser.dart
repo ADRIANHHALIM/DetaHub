@@ -285,7 +285,21 @@ class TelemetryCsvParser {
     // 2. Try ISO-8601 (e.g. 2026-09-21T20:15:00Z or 2026-09-21 20:15:00)
     final iso = DateTime.tryParse(raw);
     if (iso != null && iso.year >= 2020 && iso.year <= 2100) {
-      return iso.toUtc();
+      if (iso.isUtc) {
+        return iso;
+      }
+      // Wall-clock timestamp without timezone: preserve exact year, month, day, hour, min, sec
+      // as UTC representation to ensure identical comparison in SQLite without local offset skew.
+      return DateTime.utc(
+        iso.year,
+        iso.month,
+        iso.day,
+        iso.hour,
+        iso.minute,
+        iso.second,
+        iso.millisecond,
+        iso.microsecond,
+      );
     }
 
     return null;
