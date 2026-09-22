@@ -1,22 +1,6 @@
 // test/core/sync/device_sync_service_test.dart
 //
-// Comprehensive unit tests for DeviceSyncService offline reconciliation pipeline.
-// Covers all 15 required scenarios:
-//   1. Fresh CSV imports all records
-//   2. Duplicate CSV does not duplicate rows (idempotency)
-//   3. Existing records + new records produce only new inserts
-//   4. Malformed row rejected without failing valid rows
-//   5. Database failure prevents ESP32 deletion
-//   6. ESP32 deletion failure leaves sync retryable & SQLite data safe
-//   7. Repeated synchronization is idempotent
-//   8. Active file is never deleted
-//   9. Only one sync operation runs per device (single-flight guarantee)
-//   10. Large input processed in bounded chunks
-//   11. Device ID is preserved correctly
-//   12. Original timestamps preserved (no fake 3-second interpolation)
-//   13. No synthetic telemetry created
-//   14. Network timeout produces typed failure
-//   15. Recoverable without requiring a disconnect event
+// Regression tests for DeviceSyncService offline reconciliation pipeline (Group D: 26-40).
 
 import 'package:detahub/core/database/app_database.dart';
 import 'package:detahub/core/network/device_api_service.dart';
@@ -25,7 +9,6 @@ import 'package:detahub/core/network/network_error.dart';
 import 'package:detahub/core/sync/csv/telemetry_csv_parser.dart';
 import 'package:detahub/core/sync/device_sync_service.dart';
 import 'package:detahub/core/sync/models/sync_result.dart';
-import 'package:detahub/core/sync/models/sync_state.dart';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
@@ -37,6 +20,7 @@ class FakeDeviceApiService extends DeviceApiService {
   List<DeviceFile> filesToReturn = [];
   Map<String, String> fileContents = {};
   List<String> deletedFiles = [];
+  List<String> downloadOrder = [];
   bool failListFiles = false;
   bool failDownload = false;
   bool failDelete = false;
@@ -55,6 +39,7 @@ class FakeDeviceApiService extends DeviceApiService {
     if (failDownload) {
       return Err(errorToReturn ?? const TimeoutError('Download timeout'));
     }
+    downloadOrder.add(fileName);
     final content = fileContents[fileName];
     if (content == null) {
       return Err(NotFoundError(fileName));
@@ -78,7 +63,10 @@ void main() {
   late DeviceSyncService syncService;
 
   const testDeviceId = 'lat-test-node-01';
+  const testDeviceId2 = 'lat-test-node-02';
   const testBaseUrl = 'http://192.168.1.100';
+  const testBaseUrl2 = 'http://192.168.1.101';
+  final refDate = DateTime.utc(2026, 9, 22);
 
   setUp(() async {
     db = AppDatabase(NativeDatabase.memory());
@@ -89,7 +77,7 @@ void main() {
       csvParser: const TelemetryCsvParser(),
     );
 
-    // Seed parent Sector, SubSector, and Device
+    // Seed parent Sector, SubSector, and Devices
     final sectorId = await db.sectorDao.insertSector(
       const SectorsCompanion(name: Value('Campus')),
     );
@@ -103,9 +91,18 @@ void main() {
       DevicesCompanion(
         id: const Value(testDeviceId),
         subSectorId: Value(subSectorId),
-        name: const Value('Lab Air Tester'),
+        name: const Value('Lab Air Tester 1'),
         productType: const Value('LAT_ENS160'),
         baseUrl: const Value(testBaseUrl),
+      ),
+    );
+    await db.deviceDao.upsertDevice(
+      DevicesCompanion(
+        id: const Value(testDeviceId2),
+        subSectorId: Value(subSectorId),
+        name: const Value('Lab Air Tester 2'),
+        productType: const Value('LAT_ENS160'),
+        baseUrl: const Value(testBaseUrl2),
       ),
     );
   });
@@ -115,8 +112,8 @@ void main() {
     await db.close();
   });
 
-  group('DeviceSyncService - Production Telemetry Reconciliation', () {
-    test('TEST 1: Fresh CSV imports all valid records', () async {
+  group('Group D: DeviceSyncService Hardening (26-40)', () {
+    test('26. clean sync deletes historical source and reports clean success', () async {
       fakeApi.filesToReturn = [
         const DeviceFile(name: 'data_2026-09-20.csv', size: 1024),
       ];
@@ -128,103 +125,67 @@ void main() {
       final result = await syncService.reconcileDevice(
         deviceId: testDeviceId,
         baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
+        referenceTime: refDate,
       );
 
       expect(result.status, SyncStatus.success);
+      expect(result.isCleanSuccess, isTrue);
       expect(result.recordsRead, 2);
       expect(result.recordsInserted, 2);
-      expect(result.recordsIgnored, 0);
+      expect(result.recordsRejected, 0);
+      expect(result.preservedFiles, isEmpty);
       expect(result.deletedFiles, ['data_2026-09-20.csv']);
-
-      final stored = await db.telemetryDao.getRecentRecords(testDeviceId, limit: 10);
-      expect(stored.length, 2);
-      expect(stored[1].temperature, 25.0);
-      expect(stored[0].temperature, 25.1);
+      expect(fakeApi.deletedFiles, ['data_2026-09-20.csv']);
     });
 
-    test('TEST 2: Duplicate CSV does not duplicate database rows', () async {
-      const csv =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n';
-      fakeApi.filesToReturn = [
-        const DeviceFile(name: 'data_2026-09-20.csv'),
-      ];
-      fakeApi.fileContents['data_2026-09-20.csv'] = csv;
-
-      // First sync
-      final r1 = await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-      expect(r1.recordsInserted, 1);
-
-      // Second sync of same data
-      final r2 = await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-      expect(r2.recordsInserted, 0);
-      expect(r2.recordsIgnored, 1);
-
-      final count = await db.telemetryDao.countTelemetryForDevice(testDeviceId);
-      expect(count, 1); // Exactly 1, no duplicate
-    });
-
-    test('TEST 3: Existing records + new records produce only new inserts', () async {
-      // Pre-seed record at 10:00
-      await db.telemetryDao.batchInsertRecords([
-        TelemetryRecordsCompanion.insert(
-          deviceId: testDeviceId,
-          timestamp: DateTime.utc(2026, 9, 20, 10, 0),
-          temperature: const Value(25.0),
-        ),
-      ]);
-
-      // CSV contains 10:00 and 10:01
+    test('27. invalid row preserves source file (DO NOT delete)', () async {
       fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
       fakeApi.fileContents['data_2026-09-20.csv'] =
           'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
           '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n'
-          '2026-09-20T10:01:00Z,25.5,61.0,420,115,2\n';
+          'corrupted-bad-row-garbage\n';
 
       final result = await syncService.reconcileDevice(
         deviceId: testDeviceId,
         baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
+        referenceTime: refDate,
       );
 
-      expect(result.recordsRead, 2);
-      expect(result.recordsInserted, 1); // Only 10:01 was new
-      expect(result.recordsIgnored, 1); // 10:00 was ignored
-
-      final count = await db.telemetryDao.countTelemetryForDevice(testDeviceId);
-      expect(count, 2);
+      // CRITICAL DATA LOSS PREVENTION:
+      expect(result.recordsRejected, 1);
+      expect(result.deletedFiles, isEmpty);
+      expect(result.preservedFiles, ['data_2026-09-20.csv']);
+      expect(fakeApi.deletedFiles, isEmpty);
+      expect(result.isCleanSuccess, isFalse);
+      expect(result.status, SyncStatus.partial);
     });
 
-    test('TEST 4: Malformed row is rejected without crashing the entire sync', () async {
+    test('28. valid rows are still persisted when another row is invalid', () async {
       fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
       fakeApi.fileContents['data_2026-09-20.csv'] =
           'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
           '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n'
-          'bad-row-corrupt-data\n'
+          'corrupted-bad-row\n'
           '2026-09-20T10:02:00Z,25.2,60.5,412,111,1\n';
 
       final result = await syncService.reconcileDevice(
         deviceId: testDeviceId,
         baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
+        referenceTime: refDate,
       );
 
-      expect(result.recordsRead, 3);
+      // Valid records are saved
       expect(result.recordsInserted, 2);
       expect(result.recordsRejected, 1);
-      expect(result.deletedFiles, ['data_2026-09-20.csv']);
+      final stored = await db.telemetryDao.countTelemetryForDevice(testDeviceId);
+      expect(stored, 2);
+
+      // But source file remains preserved
+      expect(result.deletedFiles, isEmpty);
+      expect(result.preservedFiles, ['data_2026-09-20.csv']);
     });
 
-    test('TEST 5: Database failure prevents ESP32 deletion', () async {
+    test('29. DB failure preserves source file', () async {
       driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
       final closedDb = AppDatabase(NativeDatabase.memory());
       await closedDb.close();
@@ -242,16 +203,16 @@ void main() {
       final result = await failingSyncService.reconcileDevice(
         deviceId: testDeviceId,
         baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
+        referenceTime: refDate,
       );
 
       expect(result.filesFailed, 1);
-      // CRITICAL: File must NOT be deleted from ESP32
+      expect(result.preservedFiles, ['data_2026-09-20.csv']);
       expect(fakeApi.deletedFiles, isEmpty);
       failingSyncService.dispose();
     });
 
-    test('TEST 6: ESP32 deletion failure leaves sync retryable & SQLite data safe', () async {
+    test('30. delete failure preserves source file in audit', () async {
       fakeApi.failDelete = true;
       fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
       fakeApi.fileContents['data_2026-09-20.csv'] =
@@ -261,215 +222,277 @@ void main() {
       final result = await syncService.reconcileDevice(
         deviceId: testDeviceId,
         baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
+        referenceTime: refDate,
       );
 
       expect(result.recordsInserted, 1);
       expect(result.failedDeletes, ['data_2026-09-20.csv']);
+      expect(result.preservedFiles, ['data_2026-09-20.csv']);
       expect(result.deletedFiles, isEmpty);
+      expect(result.isCleanSuccess, isFalse);
+    });
 
-      // Verify SQLite data was preserved despite delete failure
+    test('31. repeated sync is idempotent', () async {
+      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
+      fakeApi.fileContents['data_2026-09-20.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
+          '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n';
+
+      await syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+      await syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+      await syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+
       final count = await db.telemetryDao.countTelemetryForDevice(testDeviceId);
       expect(count, 1);
     });
 
-    test('TEST 7: Repeated synchronization is idempotent', () async {
-      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
-      fakeApi.fileContents['data_2026-09-20.csv'] =
+    test('32. duplicate telemetry is ignored without error', () async {
+      const csv =
           'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
           '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n';
+      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
+      fakeApi.fileContents['data_2026-09-20.csv'] = csv;
 
-      await syncService.reconcileDevice(
+      final r1 = await syncService.reconcileDevice(
         deviceId: testDeviceId,
         baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
+        referenceTime: refDate,
       );
-      await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-      await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
+      expect(r1.recordsInserted, 1);
+      expect(r1.recordsIgnored, 0);
 
-      final count = await db.telemetryDao.countTelemetryForDevice(testDeviceId);
-      expect(count, 1);
+      final r2 = await syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+      expect(r2.recordsInserted, 0);
+      expect(r2.recordsIgnored, 1);
     });
 
-    test('TEST 8: Active file is not deleted when deletion is unsafe', () async {
-      // 2026-09-22 is "today"
+    test('33. chronological file order (oldest historical file first)', () async {
       fakeApi.filesToReturn = [
-        const DeviceFile(name: 'data_2026-09-20.csv'), // historical -> can delete
-        const DeviceFile(name: 'data_2026-09-22.csv'), // active log -> CANNOT delete
-      ];
-      fakeApi.fileContents['data_2026-09-20.csv'] =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '2026-09-20T10:00:00Z,24.0,50.0,400,100,1\n';
-      fakeApi.fileContents['data_2026-09-22.csv'] =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '2026-09-22T10:00:00Z,25.0,55.0,420,110,1\n';
-
-      final result = await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        activeFileName: 'data_2026-09-22.csv',
-        referenceTime: DateTime.utc(2026, 9, 22, 12, 0),
-      );
-
-      expect(result.recordsInserted, 2);
-      expect(result.filesSkipped, 1); // data_2026-09-22.csv skipped from deletion
-      expect(result.deletedFiles, ['data_2026-09-20.csv']);
-      expect(fakeApi.deletedFiles.contains('data_2026-09-22.csv'), isFalse);
-    });
-
-    test('TEST 9: Only one sync operation runs per device (single-flight lock)', () async {
-      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
-      fakeApi.fileContents['data_2026-09-20.csv'] =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n';
-
-      // Launch two concurrent reconcileDevice calls simultaneously
-      final future1 = syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-      final future2 = syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-
-      // Both should resolve to the same underlying operation
-      final results = await Future.wait([future1, future2]);
-      expect(results[0], equals(results[1]));
-      expect(results[0].recordsInserted, 1);
-    });
-
-    test('TEST 10: Large input is processed in bounded chunks', () async {
-      final buffer = StringBuffer();
-      buffer.writeln('Timestamp,Temperature,Humidity,eCO2,TVOC,AQI');
-      for (int i = 0; i < 1440; i++) {
-        final time = DateTime.utc(2026, 9, 20).add(Duration(minutes: i));
-        buffer.writeln('${time.toIso8601String()},24.0,50.0,400,100,1');
-      }
-
-      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
-      fakeApi.fileContents['data_2026-09-20.csv'] = buffer.toString();
-
-      final result = await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-
-      expect(result.recordsRead, 1440);
-      expect(result.recordsInserted, 1440);
-      expect(result.deletedFiles, ['data_2026-09-20.csv']);
-
-      final total = await db.telemetryDao.countTelemetryForDevice(testDeviceId);
-      expect(total, 1440);
-    });
-
-    test('TEST 11: Device ID is preserved correctly in stored records', () async {
-      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
-      fakeApi.fileContents['data_2026-09-20.csv'] =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n';
-
-      await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-
-      final records = await db.telemetryDao.getRecentRecords(testDeviceId);
-      expect(records.first.deviceId, testDeviceId);
-    });
-
-    test('TEST 12: Timestamp parsing preserves original timestamps', () async {
-      const originalIso = '2026-09-20T14:35:12.000Z';
-      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
-      fakeApi.fileContents['data_2026-09-20.csv'] =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '$originalIso,25.0,60.0,410,110,1\n';
-
-      await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-
-      final records = await db.telemetryDao.getRecentRecords(testDeviceId);
-      expect(records.first.timestamp.toUtc(), DateTime.parse(originalIso));
-    });
-
-    test('TEST 13: No synthetic telemetry is created', () async {
-      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
-      // 5-minute gap in hardware logging
-      fakeApi.fileContents['data_2026-09-20.csv'] =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n'
-          '2026-09-20T10:05:00Z,25.2,60.1,412,111,1\n';
-
-      await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
-      );
-
-      final records = await db.telemetryDao.getRecordsForRange(
-        testDeviceId,
-        DateTime.utc(2026, 9, 20, 10, 0),
-        DateTime.utc(2026, 9, 20, 10, 5),
-      );
-
-      // Exactly 2 records — no interpolated points at 10:01, 10:02, etc.
-      expect(records.length, 2);
-    });
-
-    test('TEST 14: Network timeout results in a typed failure', () async {
-      fakeApi.failListFiles = true;
-      fakeApi.errorToReturn = const TimeoutError('Connection timed out');
-
-      final result = await syncService.reconcileDevice(
-        deviceId: testDeviceId,
-        baseUrl: testBaseUrl,
-      );
-
-      expect(result.status, SyncStatus.failed);
-      expect(result.errors.first, contains('TimeoutError'));
-
-      final state = syncService.getSyncState(testDeviceId);
-      expect(state, isA<SyncFailed>());
-      expect((state as SyncFailed).networkError, isA<TimeoutError>());
-    });
-
-    test('TEST 15: Recoverable without requiring a disconnect event', () async {
-      // Simulate reconnect triggering sync after offline period
-      fakeApi.filesToReturn = [
+        const DeviceFile(name: 'data_2026-09-21.csv'),
         const DeviceFile(name: 'data_2026-09-19.csv'),
         const DeviceFile(name: 'data_2026-09-20.csv'),
       ];
       fakeApi.fileContents['data_2026-09-19.csv'] =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '2026-09-19T23:59:00Z,23.0,50.0,400,100,1\n';
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-19T10:00:00Z,24.0,50.0,400,100,1\n';
       fakeApi.fileContents['data_2026-09-20.csv'] =
-          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
-          '2026-09-20T00:01:00Z,23.1,50.1,401,100,1\n';
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-20T10:00:00Z,24.5,50.0,400,100,1\n';
+      fakeApi.fileContents['data_2026-09-21.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-21T10:00:00Z,25.0,50.0,400,100,1\n';
+
+      await syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+
+      expect(fakeApi.downloadOrder, [
+        'data_2026-09-19.csv',
+        'data_2026-09-20.csv',
+        'data_2026-09-21.csv',
+      ]);
+    });
+
+    test("34. today's active file is preserved", () async {
+      fakeApi.filesToReturn = [
+        const DeviceFile(name: 'data_2026-09-22.csv'), // today
+      ];
+      fakeApi.fileContents['data_2026-09-22.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-22T10:00:00Z,25.0,55.0,420,110,1\n';
 
       final result = await syncService.reconcileDevice(
         deviceId: testDeviceId,
         baseUrl: testBaseUrl,
-        referenceTime: DateTime.utc(2026, 9, 22),
+        referenceTime: refDate,
       );
 
-      expect(result.filesProcessed, 2);
+      expect(result.recordsInserted, 1);
+      expect(result.filesSkipped, 1);
+      expect(result.preservedFiles, ['data_2026-09-22.csv']);
+      expect(fakeApi.deletedFiles, isEmpty);
+    });
+
+    test('35. undated file is preserved', () async {
+      fakeApi.filesToReturn = [
+        const DeviceFile(name: 'log.csv'),
+        const DeviceFile(name: 'backup.csv'),
+      ];
+      fakeApi.fileContents['log.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-20T10:00:00Z,25.0,55.0,420,110,1\n';
+      fakeApi.fileContents['backup.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-20T11:00:00Z,25.1,55.1,421,111,1\n';
+
+      final result = await syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+
       expect(result.recordsInserted, 2);
-      expect(result.deletedFiles.length, 2);
+      expect(result.preservedFiles, containsAll(['log.csv', 'backup.csv']));
+      expect(fakeApi.deletedFiles, isEmpty);
+    });
+
+    test('36. one sync per device (single-flight lock)', () async {
+      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
+      fakeApi.fileContents['data_2026-09-20.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n';
+
+      final f1 = syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+      final f2 = syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+
+      final results = await Future.wait([f1, f2]);
+      expect(identical(results[0], results[1]), isTrue);
+    });
+
+    test('37. another device can sync independently in parallel', () async {
+      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
+      fakeApi.fileContents['data_2026-09-20.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n';
+
+      final f1 = syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+      final f2 = syncService.reconcileDevice(
+        deviceId: testDeviceId2,
+        baseUrl: testBaseUrl2,
+        referenceTime: refDate,
+      );
+
+      final results = await Future.wait([f1, f2]);
+      expect(results[0].deviceId, testDeviceId);
+      expect(results[1].deviceId, testDeviceId2);
+      expect(identical(results[0], results[1]), isFalse);
+    });
+
+    test('38. partial result reports preserved files', () async {
+      // File A: valid -> deleted
+      // File B: invalid row -> preserved
+      // File C: valid -> deleted
+      fakeApi.filesToReturn = [
+        const DeviceFile(name: 'data_2026-09-19.csv'),
+        const DeviceFile(name: 'data_2026-09-20.csv'),
+        const DeviceFile(name: 'data_2026-09-21.csv'),
+      ];
+      fakeApi.fileContents['data_2026-09-19.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-19T10:00:00Z,24.0,50.0,400,100,1\n';
+      fakeApi.fileContents['data_2026-09-20.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-20T10:00:00Z,24.0,50.0,400,100,1\ninvalid-corrupted-row\n';
+      fakeApi.fileContents['data_2026-09-21.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n2026-09-21T10:00:00Z,25.0,50.0,400,100,1\n';
+
+      final result = await syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+
+      expect(result.deletedFiles, ['data_2026-09-19.csv', 'data_2026-09-21.csv']);
+      expect(result.preservedFiles, ['data_2026-09-20.csv']);
+      expect(result.filesPreserved, 1);
+      expect(result.status, SyncStatus.partial);
+    });
+
+    test('39. partial result reports rejected rows', () async {
+      fakeApi.filesToReturn = [const DeviceFile(name: 'data_2026-09-20.csv')];
+      fakeApi.fileContents['data_2026-09-20.csv'] =
+          'Timestamp,Temperature,Humidity,eCO2,TVOC,AQI\n'
+          '2026-09-20T10:00:00Z,25.0,60.0,410,110,1\n'
+          'bad-row-1\n'
+          'bad-row-2\n'
+          '2026-09-20T10:03:00Z,25.3,60.3,413,113,1\n';
+
+      final result = await syncService.reconcileDevice(
+        deviceId: testDeviceId,
+        baseUrl: testBaseUrl,
+        referenceTime: refDate,
+      );
+
+      expect(result.recordsRead, 4);
+      expect(result.recordsInserted, 2);
+      expect(result.recordsRejected, 2);
+      expect(result.status, SyncStatus.partial);
+    });
+
+    test('40. clean success requires zero rejected, zero preserved, and zero failed deletes', () {
+      final now = DateTime.now();
+
+      final clean = SyncResult(
+        deviceId: testDeviceId,
+        startedAt: now,
+        completedAt: now,
+        status: SyncStatus.success,
+        recordsInserted: 10,
+        recordsRejected: 0,
+        preservedFiles: const [],
+        deletedFiles: const ['data_2026-09-20.csv'],
+        failedDeletes: const [],
+      );
+      expect(clean.isCleanSuccess, isTrue);
+
+      final withRejected = SyncResult(
+        deviceId: testDeviceId,
+        startedAt: now,
+        completedAt: now,
+        status: SyncStatus.success,
+        recordsInserted: 10,
+        recordsRejected: 1,
+      );
+      expect(withRejected.isCleanSuccess, isFalse);
+
+      final withPreserved = SyncResult(
+        deviceId: testDeviceId,
+        startedAt: now,
+        completedAt: now,
+        status: SyncStatus.success,
+        recordsInserted: 10,
+        preservedFiles: const ['data_2026-09-20.csv'],
+      );
+      expect(withPreserved.isCleanSuccess, isFalse);
+
+      final withFailedDeletes = SyncResult(
+        deviceId: testDeviceId,
+        startedAt: now,
+        completedAt: now,
+        status: SyncStatus.success,
+        recordsInserted: 10,
+        failedDeletes: const ['data_2026-09-20.csv'],
+      );
+      expect(withFailedDeletes.isCleanSuccess, isFalse);
+
+      final withFailedFiles = SyncResult(
+        deviceId: testDeviceId,
+        startedAt: now,
+        completedAt: now,
+        status: SyncStatus.success,
+        filesFailed: 1,
+      );
+      expect(withFailedFiles.isCleanSuccess, isFalse);
     });
   });
 }

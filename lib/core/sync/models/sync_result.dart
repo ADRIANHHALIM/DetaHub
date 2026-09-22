@@ -22,6 +22,7 @@ class SyncResult {
   final int recordsInserted;
   final int recordsIgnored;
   final int recordsRejected;
+  final List<String> preservedFiles;
   final List<String> deletedFiles;
   final List<String> failedDeletes;
   final SyncStatus status;
@@ -39,23 +40,26 @@ class SyncResult {
     this.recordsInserted = 0,
     this.recordsIgnored = 0,
     this.recordsRejected = 0,
+    this.preservedFiles = const [],
     this.deletedFiles = const [],
     this.failedDeletes = const [],
     this.status = SyncStatus.success,
     this.errors = const [],
   });
 
+  int get filesPreserved => preservedFiles.length;
   Duration get duration => completedAt.difference(startedAt);
 
   bool get isCleanSuccess =>
       status == SyncStatus.success &&
       filesFailed == 0 &&
       failedDeletes.isEmpty &&
-      recordsRejected == 0;
+      recordsRejected == 0 &&
+      preservedFiles.isEmpty;
 
   @override
   String toString() =>
       'SyncResult(device: $deviceId, status: $status, files: $filesProcessed/$filesDiscovered, '
       'inserted: $recordsInserted, ignored: $recordsIgnored, rejected: $recordsRejected, '
-      'deleted: ${deletedFiles.length}, failedDeletes: ${failedDeletes.length})';
+      'preserved: ${preservedFiles.length}, deleted: ${deletedFiles.length}, failedDeletes: ${failedDeletes.length})';
 }

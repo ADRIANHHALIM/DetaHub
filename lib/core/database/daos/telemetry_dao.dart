@@ -111,6 +111,35 @@ class TelemetryDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Inserts an entire file's telemetry records in bounded chunks inside a single
+  /// atomic transaction, executing only ONE count before and ONE count after all
+  /// chunks are inserted (Section 11 optimization).
+  Future<int> insertFileRecordsWithCount(
+    String deviceId,
+    List<TelemetryRecordsCompanion> records, {
+    int chunkSize = 500,
+  }) async {
+    if (records.isEmpty) return 0;
+
+    return await transaction(() async {
+      final beforeCount = await countTelemetryForDevice(deviceId);
+      for (int i = 0; i < records.length; i += chunkSize) {
+        final end =
+            (i + chunkSize < records.length) ? i + chunkSize : records.length;
+        final chunk = records.sublist(i, end);
+        await batch((b) {
+          b.insertAll(
+            telemetryRecords,
+            chunk,
+            mode: InsertMode.insertOrIgnore,
+          );
+        });
+      }
+      final afterCount = await countTelemetryForDevice(deviceId);
+      return afterCount - beforeCount;
+    });
+  }
+
   // --- Live Dashboard ---
 
   /// Reactive stream that emits the most recent telemetry record for a device.

@@ -193,7 +193,7 @@ class DeviceApiService {
     String fileName,
   ) async {
     final cleanUrl = _cleanUrl(baseUrl);
-    final cleanFile = fileName.trim().replaceAll(RegExp(r'^\/+'), '');
+    final cleanFile = DeviceFile.normalizeFileName(fileName);
     try {
       final response = await _dio.get<String>(
         '$cleanUrl/$cleanFile',
@@ -237,14 +237,19 @@ class DeviceApiService {
 
   /// Deletes an acknowledged historical file from the ESP32's flash storage.
   ///
+  /// Deletes an acknowledged historical file from the ESP32's flash storage.
+  ///
   /// CRITICAL: Must ONLY be called after verified persistence in Drift SQLite.
-  /// Treats HTTP 404 as already deleted (Ok(true)).
+  /// POST /delete fallback is strictly limited to HTTP 405 (Method Not Allowed)
+  /// and HTTP 501 (Not Implemented).
+  /// HTTP 404 is treated as unconfirmed deletion (NotFoundError), preserving the
+  /// source file for future reconciliation safety.
   Future<Result<bool, NetworkError>> deleteFile(
     String baseUrl,
     String fileName,
   ) async {
     final cleanUrl = _cleanUrl(baseUrl);
-    final cleanFile = fileName.trim().replaceAll(RegExp(r'^\/+'), '');
+    final cleanFile = DeviceFile.normalizeFileName(fileName);
     try {
       await _dio.delete(
         '$cleanUrl/$cleanFile',
@@ -252,12 +257,9 @@ class DeviceApiService {
       );
       return const Ok(true);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        // Already removed from flash — safely considered deleted
-        return const Ok(true);
-      }
-      if (e.response?.statusCode == 405 || e.type == DioExceptionType.badResponse) {
-        // Fallback: try POST /delete with payload
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 405 || statusCode == 501) {
+        // Fallback: try POST /delete with payload ONLY on 405 or 501
         return _deleteFileFallback(cleanUrl, cleanFile);
       }
       return Err(_mapDioError(e, cleanUrl));
@@ -278,9 +280,6 @@ class DeviceApiService {
       );
       return const Ok(true);
     } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        return const Ok(true);
-      }
       return Err(_mapDioError(e, cleanUrl));
     } catch (e) {
       return Err(UnknownNetworkError(e));

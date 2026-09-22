@@ -48,6 +48,15 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   final List<double> _tvocHistory = [];
   Timer? _periodicPollTimer;
 
+  int _syncRetryAttempts = 0;
+  DateTime? _nextSyncRetryTime;
+  static const _retryCooldowns = [
+    Duration(seconds: 30),
+    Duration(seconds: 60),
+    Duration(seconds: 120),
+    Duration(seconds: 300),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +74,31 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
   void dispose() {
     _periodicPollTimer?.cancel();
     super.dispose();
+  }
+
+  void _triggerSync(String deviceId, String baseUrl, String? activeFileName) {
+    ref.read(deviceSyncControllerProvider(deviceId).notifier).syncDevice(
+          deviceId: deviceId,
+          baseUrl: baseUrl,
+          activeFileName: activeFileName,
+        );
+  }
+
+  void _triggerManualSync() {
+    final deviceAsync =
+        ref.read(watchDeviceWithLocationProvider(widget.deviceId));
+    final deviceWithLoc = deviceAsync.value;
+    if (deviceWithLoc == null) return;
+
+    // Reset backoff on explicit user intent
+    _syncRetryAttempts = 0;
+    _nextSyncRetryTime = null;
+
+    _triggerSync(
+      deviceWithLoc.device.id,
+      deviceWithLoc.device.baseUrl,
+      _liveData?.fileName,
+    );
   }
 
   Future<void> _pollLive() async {
@@ -124,15 +158,44 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
           _connectionStatus = ConnectionStatus.online;
         });
 
-        // Trigger offline reconciliation once when device transitions to online
+        // Bounded reconciliation trigger & retry schedule
+        final currentSyncState = ref
+            .read(deviceSyncStateProvider(deviceWithLoc.device.id))
+            .valueOrNull;
+
         if (!wasOnline) {
-          ref
-              .read(deviceSyncControllerProvider(deviceWithLoc.device.id).notifier)
-              .syncDevice(
-                deviceId: deviceWithLoc.device.id,
-                baseUrl: deviceWithLoc.device.baseUrl,
-                activeFileName: value.fileName,
+          // Transition offline -> online: trigger reconciliation immediately
+          _syncRetryAttempts = 0;
+          _nextSyncRetryTime = null;
+          _triggerSync(
+            deviceWithLoc.device.id,
+            deviceWithLoc.device.baseUrl,
+            value.fileName,
+          );
+        } else {
+          // Device remains online: evaluate bounded retry without spamming polls
+          if (currentSyncState is SyncFailed) {
+            final now = DateTime.now();
+            if (_nextSyncRetryTime == null) {
+              final cooldownIndex = _syncRetryAttempts < _retryCooldowns.length
+                  ? _syncRetryAttempts
+                  : _retryCooldowns.length - 1;
+              _nextSyncRetryTime = now.add(_retryCooldowns[cooldownIndex]);
+            } else if (now.isAfter(_nextSyncRetryTime!)) {
+              _syncRetryAttempts++;
+              _nextSyncRetryTime = null;
+              _triggerSync(
+                deviceWithLoc.device.id,
+                deviceWithLoc.device.baseUrl,
+                value.fileName,
               );
+            }
+          } else if (currentSyncState is SyncCompleted &&
+              currentSyncState.result.isCleanSuccess) {
+            // Clean reconciliation succeeded: reset retry state
+            _syncRetryAttempts = 0;
+            _nextSyncRetryTime = null;
+          }
         }
       case Err(:final error):
         setState(() {
@@ -709,12 +772,16 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
       SyncCompleted(:final result) => result.recordsInserted > 0
           ? (
               Icons.check_circle_rounded,
-              'Sinkronisasi selesai: ${result.recordsInserted} data baru (${result.recordsIgnored} duplikat diabaikan).',
+              result.isCleanSuccess
+                  ? 'Sinkronisasi selesai: ${result.recordsInserted} data baru (${result.recordsIgnored} duplikat diabaikan).'
+                  : 'Sinkronisasi sebagian: ${result.recordsInserted} tersimpan, ${result.filesPreserved} log dipertahankan.',
               false,
             )
           : (
               Icons.check_circle_outline_rounded,
-              'Data perangkat sudah mutakhir.',
+              result.filesPreserved > 0
+                  ? 'Sinkronisasi sebagian: ${result.filesPreserved} log dipertahankan untuk keamanan.'
+                  : 'Data perangkat sudah mutakhir.',
               false,
             ),
       SyncFailed(:final message) => (
@@ -755,6 +822,26 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                     ?.copyWith(fontSize: 11),
               ),
             ),
+            if (state is SyncFailed ||
+                (state is SyncCompleted && !state.result.isCleanSuccess)) ...[
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: _triggerManualSync,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  child: Text(
+                    'Coba Lagi',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
