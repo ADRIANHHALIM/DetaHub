@@ -11,6 +11,8 @@ import '../../../core/network/network_error.dart';
 import '../../../core/network/models/device_manifest.dart';
 import '../../../core/network/providers/network_providers.dart';
 
+export 'device_sync_providers.dart';
+
 // ---------------------------------------------------------------------------
 // Read providers
 // ---------------------------------------------------------------------------

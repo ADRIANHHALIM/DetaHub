@@ -17,6 +17,7 @@ import '../../../core/database/daos/telemetry_dao.dart';
 import '../../../core/network/models/live_telemetry.dart';
 import '../../../core/network/network_error.dart';
 import '../../../core/network/providers/network_providers.dart';
+import '../../../core/sync/models/sync_state.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/aqi_badge.dart';
@@ -84,6 +85,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
 
     switch (result) {
       case Ok(:final value):
+        final wasOnline = _connectionStatus == ConnectionStatus.online;
         await ref.read(telemetryDaoProvider).batchInsertRecords([
           TelemetryRecordsCompanion.insert(
             deviceId: deviceWithLoc.device.id,
@@ -101,6 +103,7 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
         if (!mounted) return;
         setState(() {
           _liveData = value;
+          // Single honest sample per reading (no duplicates)
           if (value.temperature != null) {
             _tempHistory.add(value.temperature!);
             if (_tempHistory.length > 120) _tempHistory.removeAt(0);
@@ -119,8 +122,18 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
           }
           _fetchingLive = false;
           _connectionStatus = ConnectionStatus.online;
-          _appendRealReading(value);
         });
+
+        // Trigger offline reconciliation once when device transitions to online
+        if (!wasOnline) {
+          ref
+              .read(deviceSyncControllerProvider(deviceWithLoc.device.id).notifier)
+              .syncDevice(
+                deviceId: deviceWithLoc.device.id,
+                baseUrl: deviceWithLoc.device.baseUrl,
+                activeFileName: value.fileName,
+              );
+        }
       case Err(:final error):
         setState(() {
           _fetchingLive = false;
@@ -128,19 +141,6 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
           _fetchError = _networkErrorMessage(error);
         });
     }
-  }
-
-  void _appendRealReading(LiveTelemetry value) {
-    void append(List<double> target, num? reading) {
-      if (reading == null) return;
-      target.add(reading.toDouble());
-      if (target.length > 25) target.removeAt(0);
-    }
-
-    append(_tempHistory, value.temperature);
-    append(_humidityHistory, value.humidity);
-    append(_eco2History, value.eco2);
-    append(_tvocHistory, value.tvoc);
   }
 
   String _networkErrorMessage(NetworkError error) => switch (error) {
@@ -159,6 +159,8 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
     final latestRecord = ref
         .watch(watchLatestTelemetryRecordProvider(widget.deviceId))
         .valueOrNull;
+    final syncState =
+        ref.watch(deviceSyncStateProvider(widget.deviceId)).valueOrNull;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final borderColor = isDark ? AppColors.borderDark : AppColors.border;
@@ -304,7 +306,10 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+
+              // Offline Historical Reconciliation Status
+              _buildSyncBanner(syncState, context, borderColor, surfaceVariant),
 
               // Air Quality Hero Card
               Container(
@@ -664,6 +669,96 @@ class _DeviceDetailScreenState extends ConsumerState<DeviceDetailScreen> {
       await ref.read(deviceMutationProvider.notifier).deleteDevice(device.id);
       if (context.mounted) context.pop();
     }
+  }
+
+  Widget _buildSyncBanner(
+    SyncState? state,
+    BuildContext context,
+    Color borderColor,
+    Color surfaceVariant,
+  ) {
+    if (state == null || state is SyncIdle) return const SizedBox.shrink();
+
+    final (icon, message, isProgress) = switch (state) {
+      SyncIdle() => (Icons.sync, '', false),
+      SyncDiscovering() => (
+          Icons.sync,
+          'Mencari data riwayat offline di perangkat...',
+          true,
+        ),
+      SyncDownloading(:final fileIndex, :final totalFiles, :final fileName) => (
+          Icons.download_rounded,
+          'Mengunduh log offline $fileIndex/$totalFiles ($fileName)...',
+          true,
+        ),
+      SyncParsing(:final fileIndex, :final totalFiles) => (
+          Icons.data_object_rounded,
+          'Memproses log $fileIndex/$totalFiles...',
+          true,
+        ),
+      SyncPersisting(:final recordsCount) => (
+          Icons.save_rounded,
+          'Menyimpan $recordsCount data riwayat ke database...',
+          true,
+        ),
+      SyncDeleting(:final fileIndex, :final totalFiles) => (
+          Icons.check_circle_outline_rounded,
+          'Menyinkronkan file $fileIndex/$totalFiles...',
+          true,
+        ),
+      SyncCompleted(:final result) => result.recordsInserted > 0
+          ? (
+              Icons.check_circle_rounded,
+              'Sinkronisasi selesai: ${result.recordsInserted} data baru (${result.recordsIgnored} duplikat diabaikan).',
+              false,
+            )
+          : (
+              Icons.check_circle_outline_rounded,
+              'Data perangkat sudah mutakhir.',
+              false,
+            ),
+      SyncFailed(:final message) => (
+          Icons.info_outline_rounded,
+          'Sinkronisasi riwayat tertunda: $message',
+          false,
+        ),
+    };
+
+    if (message.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: surfaceVariant,
+          borderRadius: BorderRadius.circular(kRadiusCard),
+          border: Border.all(color: borderColor, width: 1),
+        ),
+        child: Row(
+          children: [
+            if (isProgress)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 1.5),
+              )
+            else
+              const Icon(Icons.sync, size: 14, color: AppColors.aqiGood),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(fontSize: 11),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

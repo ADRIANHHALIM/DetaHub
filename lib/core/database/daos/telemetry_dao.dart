@@ -89,6 +89,28 @@ class TelemetryDao extends DatabaseAccessor<AppDatabase>
     });
   }
 
+  /// Inserts a batch of telemetry records with [InsertMode.insertOrIgnore] inside
+  /// an atomic transaction and returns the exact count of newly inserted records.
+  Future<int> batchInsertRecordsWithCount(
+    String deviceId,
+    List<TelemetryRecordsCompanion> records,
+  ) async {
+    if (records.isEmpty) return 0;
+
+    return await transaction(() async {
+      final beforeCount = await countTelemetryForDevice(deviceId);
+      await batch((b) {
+        b.insertAll(
+          telemetryRecords,
+          records,
+          mode: InsertMode.insertOrIgnore,
+        );
+      });
+      final afterCount = await countTelemetryForDevice(deviceId);
+      return afterCount - beforeCount;
+    });
+  }
+
   // --- Live Dashboard ---
 
   /// Reactive stream that emits the most recent telemetry record for a device.

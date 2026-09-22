@@ -10,9 +10,10 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
-import 'network_error.dart';
+import 'models/device_file.dart';
 import 'models/device_manifest.dart';
 import 'models/live_telemetry.dart';
+import 'network_error.dart';
 
 /// Provides typed access to a DetaLab device's local HTTP endpoints.
 ///
@@ -127,6 +128,160 @@ class DeviceApiService {
       return Err(_mapDioError(e, cleanUrl));
     } on FormatException catch (e) {
       return Err(ParseError(e.message));
+    } catch (e) {
+      return Err(UnknownNetworkError(e));
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Edge Storage File Operations (/listfiles, download, delete)
+  // ---------------------------------------------------------------------------
+
+  /// Queries GET /listfiles to discover historical logs stored on the ESP32.
+  ///
+  /// Uses [DeviceFile.parseListResponse] to adaptively parse JSON or plaintext lists.
+  Future<Result<List<DeviceFile>, NetworkError>> listFiles(String baseUrl) async {
+    final cleanUrl = _cleanUrl(baseUrl);
+    try {
+      final response = await _dio.get(
+        '$cleanUrl/listfiles',
+        options: Options(
+          responseType: ResponseType.json,
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
+      final files = DeviceFile.parseListResponse(response.data);
+      return Ok(files);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        // Test firmware may serve plaintext with text/plain
+        return _listFilesPlaintextFallback(cleanUrl);
+      }
+      return Err(_mapDioError(e, cleanUrl));
+    } on FormatException catch (e) {
+      return Err(ParseError(e.message));
+    } catch (e) {
+      return Err(UnknownNetworkError(e));
+    }
+  }
+
+  Future<Result<List<DeviceFile>, NetworkError>> _listFilesPlaintextFallback(
+    String cleanUrl,
+  ) async {
+    try {
+      final response = await _dio.get(
+        '$cleanUrl/listfiles',
+        options: Options(
+          responseType: ResponseType.plain,
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
+      final files = DeviceFile.parseListResponse(response.data);
+      return Ok(files);
+    } on DioException catch (e) {
+      return Err(_mapDioError(e, cleanUrl));
+    } catch (e) {
+      return Err(UnknownNetworkError(e));
+    }
+  }
+
+  /// Downloads raw CSV file contents from the device's flash storage.
+  ///
+  /// Requests as [ResponseType.plain] to avoid unnecessary JSON parsing.
+  Future<Result<String, NetworkError>> downloadFile(
+    String baseUrl,
+    String fileName,
+  ) async {
+    final cleanUrl = _cleanUrl(baseUrl);
+    final cleanFile = fileName.trim().replaceAll(RegExp(r'^\/+'), '');
+    try {
+      final response = await _dio.get<String>(
+        '$cleanUrl/$cleanFile',
+        options: Options(
+          responseType: ResponseType.plain,
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+      final body = response.data ?? '';
+      return Ok(body);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        // Fallback: try GET /files/<fileName>
+        return _downloadFileFallback(cleanUrl, cleanFile);
+      }
+      return Err(_mapDioError(e, cleanUrl));
+    } catch (e) {
+      return Err(UnknownNetworkError(e));
+    }
+  }
+
+  Future<Result<String, NetworkError>> _downloadFileFallback(
+    String cleanUrl,
+    String cleanFile,
+  ) async {
+    try {
+      final response = await _dio.get<String>(
+        '$cleanUrl/files/$cleanFile',
+        options: Options(
+          responseType: ResponseType.plain,
+          receiveTimeout: const Duration(seconds: 30),
+        ),
+      );
+      return Ok(response.data ?? '');
+    } on DioException catch (e) {
+      return Err(_mapDioError(e, cleanUrl));
+    } catch (e) {
+      return Err(UnknownNetworkError(e));
+    }
+  }
+
+  /// Deletes an acknowledged historical file from the ESP32's flash storage.
+  ///
+  /// CRITICAL: Must ONLY be called after verified persistence in Drift SQLite.
+  /// Treats HTTP 404 as already deleted (Ok(true)).
+  Future<Result<bool, NetworkError>> deleteFile(
+    String baseUrl,
+    String fileName,
+  ) async {
+    final cleanUrl = _cleanUrl(baseUrl);
+    final cleanFile = fileName.trim().replaceAll(RegExp(r'^\/+'), '');
+    try {
+      await _dio.delete(
+        '$cleanUrl/$cleanFile',
+        options: Options(receiveTimeout: const Duration(seconds: 15)),
+      );
+      return const Ok(true);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        // Already removed from flash — safely considered deleted
+        return const Ok(true);
+      }
+      if (e.response?.statusCode == 405 || e.type == DioExceptionType.badResponse) {
+        // Fallback: try POST /delete with payload
+        return _deleteFileFallback(cleanUrl, cleanFile);
+      }
+      return Err(_mapDioError(e, cleanUrl));
+    } catch (e) {
+      return Err(UnknownNetworkError(e));
+    }
+  }
+
+  Future<Result<bool, NetworkError>> _deleteFileFallback(
+    String cleanUrl,
+    String cleanFile,
+  ) async {
+    try {
+      await _dio.post(
+        '$cleanUrl/delete',
+        data: {'file': cleanFile},
+        options: Options(receiveTimeout: const Duration(seconds: 15)),
+      );
+      return const Ok(true);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        return const Ok(true);
+      }
+      return Err(_mapDioError(e, cleanUrl));
     } catch (e) {
       return Err(UnknownNetworkError(e));
     }
