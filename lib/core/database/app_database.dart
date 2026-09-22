@@ -80,11 +80,21 @@ class AppDatabase extends _$AppDatabase {
 // Connection Factory
 // ---------------------------------------------------------------------------
 
-/// Opens the SQLite database file at the platform-appropriate documents path.
-/// Uses `drift_flutter` which selects the correct backend per platform
-/// (NativeDatabase on Android/iOS, WebDatabase on web).
+// /// Opens the SQLite database file at the platform-appropriate documents path.
+// /// Uses `drift_flutter` which selects the correct backend per platform
+// /// (NativeDatabase on Android/iOS, WebDatabase on web).
+// QueryExecutor _openConnection() {
+//   return driftDatabase(name: 'detahub');
+// }
+
 QueryExecutor _openConnection() {
-  return driftDatabase(name: 'detahub');
+  return driftDatabase(
+    name: 'detahub',
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------

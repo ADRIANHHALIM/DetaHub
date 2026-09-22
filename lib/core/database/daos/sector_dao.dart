@@ -119,11 +119,24 @@ class SectorDao extends DatabaseAccessor<AppDatabase> with _$SectorDaoMixin {
   ///
   /// Uses a LEFT JOIN to count devices per sub-sector so that sub-sectors
   /// with zero devices are still visible in the sidebar.
-  Stream<List<SectorWithSubSectors>> watchFullHierarchy() {
-    // Step 1: Watch all sectors reactively.
-    return watchAllSectors().asyncExpand((allSectors) {
-      // Step 2: For each emission, fetch sub-sectors + device counts.
-      return Stream.fromFuture(_buildHierarchy(allSectors));
+  // Stream<List<SectorWithSubSectors>> watchFullHierarchy() {
+  //   // Step 1: Watch all sectors reactively.
+  //   return watchAllSectors().asyncExpand((allSectors) {
+  //     // Step 2: For each emission, fetch sub-sectors + device counts.
+  //     return Stream.fromFuture(_buildHierarchy(allSectors));
+  //   });
+  // }
+
+    Stream<List<SectorWithSubSectors>> watchFullHierarchy() {
+    // Watch all three tables so any insert/update/delete re-emits the tree.
+    final trigger = customSelect(
+      'SELECT 1',
+      readsFrom: {sectors, subSectors, devices},
+    ).watch();
+
+    return trigger.asyncMap((_) async {
+      final allSectors = await getAllSectors();
+      return _buildHierarchy(allSectors);
     });
   }
 
